@@ -4,6 +4,7 @@
 !/.gitignore
 !/.gitattributes
 !/README.md
+!/LICENSE
 !/model-config.json
 !/*.cmd
 !/app/

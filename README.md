@@ -137,6 +137,7 @@ Carpetas creadas por el instalador y la app (no forman parte del repositorio): `
 
 ## Licencias y créditos
 
+- **Código de la app:** licencia [MIT](LICENSE). Puedes usarlo, modificarlo y redistribuirlo, también con fines comerciales, conservando el aviso de copyright. La licencia MIT cubre solo el código, no los modelos.
 - **Modelos:** Qwen-Image 2.1 y el LoRA Viggle Turbo están bajo la **Qwen RESEARCH LICENSE AGREEMENT**, que permite solo **uso no comercial (investigación o evaluación)**; para uso comercial hay que solicitar una licencia a Qwen. Texto completo en [models/LICENSE-Viggle.txt](models/LICENSE-Viggle.txt) y aviso en [models/NOTICE-Viggle.txt](models/NOTICE-Viggle.txt). *Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) 2026 Hangzhou Tongyi Laboratory Technology Co., Ltd. All Rights Reserved.* **Built with Qwen.**
 - El codificador Qwen3‑VL y el VAE se descargan de sus repositorios oficiales y mantienen sus propias licencias; consulta cada página enlazada en [docs/TECNICO.md](docs/TECNICO.md).
 - Motor de inferencia: [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) de leejet, basado en [ggml](https://github.com/ggml-org/ggml).
