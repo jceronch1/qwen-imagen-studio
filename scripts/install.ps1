@@ -8,7 +8,26 @@ Set-Location -LiteralPath $ProjectRoot
 New-Item -ItemType Directory -Force -Path models,logs,.downloads,outputs | Out-Null
 $Config = Get-Content -LiteralPath 'model-config.json' -Raw | ConvertFrom-Json
 function Step([string]$Text) { Write-Host ''; Write-Host "== $Text" -ForegroundColor Cyan }
-function Hash([string]$Path) { (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant() }
+# .NET only: works even when Windows PowerShell inherits another module path.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+function Hash([string]$Path) {
+    $Stream = [IO.File]::OpenRead((Resolve-Path -LiteralPath $Path).Path)
+    try { $Sha = [Security.Cryptography.SHA256]::Create(); ([BitConverter]::ToString($Sha.ComputeHash($Stream)) -replace '-','').ToLowerInvariant() } finally { $Stream.Dispose() }
+}
+function Unzip([string]$Zip,[string]$Destination) {
+    New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+    $Archive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $Zip).Path)
+    try {
+        $Root = (Resolve-Path -LiteralPath $Destination).Path
+        foreach ($Entry in $Archive.Entries) {
+            $Target = [IO.Path]::GetFullPath((Join-Path $Root $Entry.FullName))
+            if (!$Target.StartsWith($Root, [StringComparison]::OrdinalIgnoreCase)) { throw "Ruta no valida en $Zip" }
+            if ($Entry.FullName.EndsWith('/')) { New-Item -ItemType Directory -Force -Path $Target | Out-Null; continue }
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Target) | Out-Null
+            [IO.Compression.ZipFileExtensions]::ExtractToFile($Entry, $Target, $true)
+        }
+    } finally { $Archive.Dispose() }
+}
 # Resumable download into <file>.part; it only takes its final name after the SHA256 check.
 function Download([string]$Url,[string]$Target,[string]$Sha) {
     if (Test-Path -LiteralPath $Target) {
@@ -32,7 +51,7 @@ function Runtime([string]$Folder,[string]$Kind,[string]$Sha) {
     New-Item -ItemType Directory -Force -Path $Path | Out-Null
     $Zip = '.downloads\engine-' + $Kind + '-88411ef.zip'
     Download ('https://github.com/leejet/stable-diffusion.cpp/releases/download/master-908-88411ef/sd-master-88411ef-bin-win-' + $Kind + '-x64.zip') $Zip $Sha
-    Expand-Archive -LiteralPath $Zip -DestinationPath $Path -Force
+    Unzip $Zip $Path
     Remove-Item -LiteralPath $Zip
 }
 
@@ -49,7 +68,7 @@ else {
     Download "https://nodejs.org/dist/$NodeVersion/node-$NodeVersion-win-x64.zip" $NodeZip '158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541'
     $Extract = '.downloads\node-extract'
     if (Test-Path -LiteralPath $Extract) { Remove-Item -LiteralPath $Extract -Recurse -Force }
-    Expand-Archive -LiteralPath $NodeZip -DestinationPath $Extract -Force
+    Unzip $NodeZip $Extract
     if (Test-Path -LiteralPath 'node') { Remove-Item -LiteralPath 'node' -Recurse -Force }
     Move-Item -LiteralPath (Join-Path $Extract "node-$NodeVersion-win-x64") -Destination 'node'
     Remove-Item -LiteralPath $Extract -Recurse -Force; Remove-Item -LiteralPath $NodeZip
@@ -82,7 +101,7 @@ if ($Backend -eq 'cuda' -or ($Backend -eq 'auto' -and $HasNvidia)) {
     $RuntimePath = Join-Path $ProjectRoot $Config.runtime
     if (!(Test-Path -LiteralPath (Join-Path $RuntimePath 'cublas64_12.dll'))) {
         Download 'https://github.com/leejet/stable-diffusion.cpp/releases/download/master-908-88411ef/cudart-sd-bin-win-cu12-x64.zip' '.downloads\cuda.zip' 'fe20366827d357c00797eebb58244dddab7fd9a348d70090c3871004c320f38d'
-        Expand-Archive -LiteralPath '.downloads\cuda.zip' -DestinationPath $RuntimePath -Force
+        Unzip '.downloads\cuda.zip' $RuntimePath
         Remove-Item -LiteralPath '.downloads\cuda.zip'
     }
 }
