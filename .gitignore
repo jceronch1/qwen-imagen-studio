@@ -1,0 +1,22 @@
+# Solo se publica el codigo de la app. Motores, modelos, Node.js portable,
+# imagenes generadas y registros los descarga o crea el instalador.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/model-config.json
+!/*.cmd
+!/app/
+!/scripts/
+!/docs/
+/docs/*
+!/docs/capturas/
+!/docs/TECNICO.md
+!/models/
+/models/*
+!/models/LICENSE-Viggle.txt
+!/models/NOTICE-Viggle.txt
+!/qa/
+/qa/*
+!/qa/optimizacion/
+*.part

@@ -1,0 +1,15 @@
+Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) 2026 Hangzhou Tongyi Laboratory Technology Co., Ltd. All Rights Reserved.
+
+This repository is a derivative work of Qwen/Qwen-Image-2.1, produced by Viggle.
+Built with Qwen.
+
+It contains:
+  MODIFIED  transformer/ - the base transformer after a full-parameter 4-step distillation fine-tune, stored bf16
+  ADDED     Qwen-Image-2.1-viggle-turbo-4step-lora-r64.safetensors - a 4-step distilled LoRA adapter (rank 64, alpha 64) for the base transformer, stored bf16
+  ADDED     peft/ - the same adapter in peft key format, F32 as trained
+  MODIFIED  scheduler/scheduler_config.json - the base scheduler config with shift_terminal changed from 0.02 to null
+
+No other file of the base model is copied or modified; processor/, text_encoder/ and vae/ are loaded from
+Qwen/Qwen-Image-2.1 at runtime.
+
+Source checkpoints: transformer/ - run v4_anchor, step 400 (EMA student, full fine-tune); LoRA - run v2_16gpu, step 400 (EMA student)

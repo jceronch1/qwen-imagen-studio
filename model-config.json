@@ -1,0 +1,30 @@
+{
+  "version": "0.2.1",
+  "revision": "b77064be8b3f0b1a13c6a212067cb3d281c60c84",
+  "source": "Viggle/Qwen-Image-2.1-viggle-turbo",
+  "base": "qwen_image_2.1-base-Q4_K.gguf",
+  "baseSource": "leejet/Qwen-Image-2.1-GGUF",
+  "baseRevision": "cc11433936a06e9765f7c0c0b1f0436cfd2b9856",
+  "baseSha256": "29f9c83c249ff0292fb2943fceddfa2319b446601866c82a4f8be062abea72c2",
+  "lora": "Qwen-Image-2.1-viggle-turbo-v0.2.1-6step-lora-r256.safetensors",
+  "loraSha256": "2a0148f5c73abbed5f97da5ea356e439318aadb281d01fce4af39cdf43728803",
+  "loraScale": 1,
+  "runtimeLora": "viggle-v0.2.1-r256-sdcpp-fused.safetensors",
+  "runtime": "runtime-v0.2.1",
+  "engineRevision": "88411ef",
+  "recommendedSteps": 6,
+  "rawSigmas": [
+    1,
+    0.9375,
+    0.875,
+    0.75,
+    0.5,
+    0.25
+  ],
+  "runtimeLoraSha256": "0b2b44ce49504d013a7c939a184a03be94ae153bdb4fb20a376c4005da759455",
+  "merged": "qwen_image_2.1-viggle-turbo-v0.2.1-merged-Q4_K.gguf",
+  "preciseBase": "qwen_image_2.1-Q8_0.gguf",
+  "preciseBaseSha256": "f8b244b00937f0e444a40dbf7866460871b89b30142594973b6012d1b471dc0a",
+  "runtimeCpu": "runtime-cpu-v0.2.1",
+  "runtimeVulkan": "runtime-vulkan-v0.2.1"
+}
