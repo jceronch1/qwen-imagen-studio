@@ -108,7 +108,7 @@ const server = createServer(async (req,res) => {
       // A job submitted while the engine loads waits for it, so loading does not block the button.
       if(manager)ready=compute.canGenerate;
       const current = compute.current ? presetFor(compute.current.model || 'qwen').label : null;
-      return json(res,200,{ app:'qwen-turbo-local', ready, compute, currentModel:current, active: active ? publicJob(active) : null, model:`Qwen 2.1 · Viggle Turbo v${MODEL.version} · Q4_K + LoRA r256`, modelVersion:MODEL.version, recommendedSteps:MODEL.recommendedSteps });
+      return json(res,200,{ app:'image-studio-local', ready, compute, currentModel:current, active: active ? publicJob(active) : null, model:current, modelVersion:MODEL.version, recommendedSteps:MODEL.recommendedSteps });
     }
     if (req.method === 'GET' && path === '/api/models') {
       // Without the managed engine, the external engine decides the model: Qwen settings are assumed.
@@ -128,7 +128,7 @@ const server = createServer(async (req,res) => {
       if (active || deleting) return json(res,409,{error:'Espera a que termine la operación en curso.'});
       const params = validate(await readBody(req));
       if (active || deleting) return json(res,409,{error:'Espera a que termine la operación en curso.'});
-      if(!manager&&params.compute!=='auto')return json(res,400,{error:'Este servidor usa un motor externo. Usa "Iniciar Qwen Imagen Studio.cmd" para seleccionar CPU/GPU.'});
+      if(!manager&&params.compute!=='auto')return json(res,400,{error:'Este servidor usa un motor externo. Usa "Iniciar Image Studio.cmd" para seleccionar CPU/GPU.'});
       if(manager){
         installedModel(params.model);
         const loras=new Set(listLoras().map(l=>l.file));
@@ -186,4 +186,4 @@ const server = createServer(async (req,res) => {
     return json(res,404,{error:'No encontrado.'});
   } catch(error) { return json(res,error.status || (error.code === 'ENOENT' ? 404 : 500),{error:error.message}); }
 });
-server.listen(port,'127.0.0.1',()=>console.log(`Qwen Imagen Studio: http://127.0.0.1:${port}`));
+server.listen(port,'127.0.0.1',()=>console.log(`Image Studio: http://127.0.0.1:${port}`));

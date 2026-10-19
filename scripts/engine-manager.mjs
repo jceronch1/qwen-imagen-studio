@@ -94,7 +94,7 @@ export class EngineManager {
       await this.stop();
       await assertPortFree(this.port);
       const exe=resolve(root,selection.runtime,'sd-server.exe'), args=[...engineArgs(selection,threads,this.port,features),'--eager-load'];
-      await appendFile(resolve(root,'logs/engine.out.log'),`\n[Qwen Studio ${new Date().toISOString()}] model=${model} mode=${selection.mode} backend=${selection.backend} threads=${threads} runtime=${selection.runtime} features=${JSON.stringify(features)}\n`);
+      await appendFile(resolve(root,'logs/engine.out.log'),`\n[Image Studio ${new Date().toISOString()}] model=${model} mode=${selection.mode} backend=${selection.backend} threads=${threads} runtime=${selection.runtime} features=${JSON.stringify(features)}\n`);
       const out=openSync(resolve(root,'logs/engine.out.log'),'a'),err=openSync(resolve(root,'logs/engine.err.log'),'a');
       const child=spawn(exe,args,{cwd:root,windowsHide:true,stdio:['ignore',out,err]});closeSync(out);closeSync(err);this.child=child;
       let failure;child.on('error',e=>{failure=e;this.error=e.message;});

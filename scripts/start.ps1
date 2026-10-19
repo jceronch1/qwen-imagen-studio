@@ -6,11 +6,12 @@ $Logs = Join-Path $ProjectRoot 'logs'
 New-Item -ItemType Directory -Force -Path $Logs | Out-Null
 . (Join-Path $PSScriptRoot 'common.ps1')
 $Node = Get-AppNode $ProjectRoot
-if (!$Node) { throw 'Falta Node.js. Ejecuta "Instalar Qwen Imagen Studio.cmd".' }
+if (!$Node) { throw 'Falta Node.js. Ejecuta "Instalar Image Studio.cmd".' }
 $Url = "http://127.0.0.1:$Port"
 try {
     $status = Invoke-RestMethod "$Url/api/status" -TimeoutSec 3
-    if ($status.app -ne 'qwen-turbo-local') { throw 'El puerto esta ocupado por otra aplicacion.' }
+    # qwen-turbo-local: identifier of versions before the rename, still running after an update.
+    if ($status.app -notin 'image-studio-local','qwen-turbo-local') { throw 'El puerto esta ocupado por otra aplicacion.' }
     if (!$NoBrowser) { Start-Process $Url }
     exit 0
 } catch { if ($_.Exception.Message -match 'ocupado') { throw } }
@@ -22,11 +23,11 @@ $Merged = (Test-Path -LiteralPath $Proof) -and (Test-Path -LiteralPath (Join-Pat
 $QwenFiles = @($Transformer + @('models\Qwen3VL-8B-Instruct-Q4_K_M.gguf','models\mmproj-Qwen3VL-8B-Instruct-F16.gguf','models\qwen_image_2.1_vae_bf16.safetensors'))
 $MissingQwen = @($QwenFiles | Where-Object { !(Test-Path -LiteralPath (Join-Path $ProjectRoot $_)) })
 # SDXL checkpoints (NoobAI-XL or your own) are enough to start without Qwen-Image.
-$SdxlDir = Join-Path $ProjectRoot ((Get-Content -LiteralPath (Join-Path $ProjectRoot 'sdxl-models.json') -Raw | ConvertFrom-Json).checkpointDir)
+$SdxlDir = Join-Path $ProjectRoot ((Get-Content -LiteralPath (Join-Path $ProjectRoot 'sdxl-models.json') -Raw -Encoding UTF8 | ConvertFrom-Json).checkpointDir)
 $HasSdxl = (Test-Path -LiteralPath $SdxlDir) -and @(Get-ChildItem -LiteralPath $SdxlDir -File | Where-Object { $_.Extension -in '.safetensors','.gguf' }).Count -gt 0
-if ($MissingQwen.Count -and !$HasSdxl) { throw "Falta $($MissingQwen[0]). Ejecuta 'Instalar Qwen Imagen Studio.cmd' o 'Instalar modelo anime (NoobAI-XL).cmd'." }
+if ($MissingQwen.Count -and !$HasSdxl) { throw "Falta $($MissingQwen[0]). Ejecuta 'Instalar Image Studio.cmd'." }
 $cpu = Join-Path $ProjectRoot ($Config.runtimeCpu + '\sd-server.exe')
-if(!(Test-Path -LiteralPath $cpu)){throw 'Falta el motor CPU. Ejecuta "Instalar Qwen Imagen Studio.cmd".'}
+if(!(Test-Path -LiteralPath $cpu)){throw 'Falta el motor CPU. Ejecuta "Instalar Image Studio.cmd".'}
 # Remove only a recorded engine from this project left by an interrupted gateway.
 $EngineRecord = Join-Path $Logs 'engine-process.json'
 if(Test-Path -LiteralPath $EngineRecord){

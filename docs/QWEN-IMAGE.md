@@ -1,25 +1,8 @@
-# Qwen Imagen Studio · Detalles técnicos
+# Qwen-Image 2.1 · Viggle Turbo en Image Studio
 
-Documento para quien quiera entender o modificar la app. Las instrucciones de instalación y uso están en el [README](../README.md).
+Detalles técnicos y mediciones de la familia **Qwen-Image** (el modelo con el que nació el proyecto). La arquitectura general de la app está en [ARQUITECTURA.md](ARQUITECTURA.md), los modelos SDXL en [MODELOS.md](MODELOS.md) y los ejecutables del motor en [MOTOR.md](MOTOR.md).
 
-## Arquitectura
-
-```
-Navegador (app/)  ──HTTP──▶  Servidor Node (scripts/server.mjs, 127.0.0.1:7871)
-                                 │  valida, encola lotes, guarda PNG + JSON en outputs/
-                                 ▼
-                        Gestor del motor (scripts/engine-manager.mjs)
-                                 │  detecta CPU/GPU con --list-devices, elige argumentos,
-                                 │  arranca/cambia/precarga un único sd-server
-                                 ▼
-                 stable-diffusion.cpp sd-server (127.0.0.1:7872)
-                 runtime-cpu-v0.2.1 · runtime-v0.2.1 (CUDA) · runtime-vulkan-v0.2.1
-```
-
-- `scripts/core.mjs`: validación de peticiones, planificador Turbo (sigmas), carga útil del motor y política del VAE.
-- `scripts/engine-manager.mjs`: detección de hardware, modo automático, argumentos del motor por modo y arranque serializado.
-- `scripts/merge-lora.mjs` + `scripts/gguf.mjs`: creación del modelo optimizado (LoRA fusionado).
-- `scripts/install.ps1`, `start.ps1`, `stop.ps1`, `common.ps1`: instalación y ciclo de vida en Windows.
+Archivos propios de esta familia: `model-config.json` (versiones y hashes fijados), `scripts/merge-lora.mjs` + `scripts/gguf.mjs` (modelo optimizado con el LoRA fusionado) y `scripts/prepare-lora.mjs` (modo compatible). El planificador Turbo está en `scripts/core.mjs` (`turboSigmas`).
 
 ## Rendimiento
 
@@ -41,7 +24,7 @@ Qué aporta cada ajuste (GPU, 1024 × 1024). Todas las mediciones están en `qa/
 1. **Pesos en RAM** (`--offload-to-cpu`) en vez de leerlos del disco en cada paso (`--params-backend disk`): 58 → 30 s.
 2. **VAE con convolución directa y sin mosaico** hasta 1 MP (`--vae-conv-direct`): decodificación 7,8 → 2,6 s, resultado prácticamente idéntico (PSNR 49,7 dB). Los tamaños mayores usan mosaico y el motor reintenta con mosaico si falta VRAM.
 3. **LoRA fusionado en los pesos**: el transformer (4 GB) cabe entero en la VRAM y cada paso baja de 3,7 a 2,6 s; ahorra 1,76 GB de VRAM.
-4. **SageAttention** en NVIDIA (`--sage-attn`): otro −12 % en los pasos. Cambia detalles finos (misma composición; el texto dentro de la imagen se mantiene correcto); se desactiva con **Atención rápida**.
+4. **SageAttention** en NVIDIA RTX 30 o posterior (`--sage-attn`; requiere compute capability 8.0, por eso no se activa en GTX 10xx/16xx ni RTX 20xx): otro −12 % en los pasos. Cambia detalles finos (misma composición; el texto dentro de la imagen se mantiene correcto); se desactiva con **Atención rápida**.
 5. **Precarga** (`--eager-load`) al abrir la página y sondeo cada 250 ms: los ~10 s de carga ocurren mientras se escribe el prompt.
 6. CPU: pesos leídos en su sitio con `--mmap` (como llama.cpp) y modelo fusionado: −34 %.
 7. CPU + GPU deja solo el codificador de texto en CPU; con el VAE en CPU una imagen de 1024 px tardaba ~5 min.
@@ -88,6 +71,8 @@ Comunes: `--vae-conv-direct`, `--eager-load`, `--diffusion-fa` (o `--sage-attn` 
 Todas las revisiones y SHA256 están fijados en `model-config.json` y en `scripts/install.ps1`. Los motores `stable-diffusion.cpp` están fijados en la versión `88411ef`.
 
 ## Pruebas
+
+La lista completa (incluidas las de SDXL) está en [ARQUITECTURA.md](ARQUITECTURA.md#pruebas). Las específicas de Qwen:
 
 | Comando | Qué comprueba | Requiere |
 | --- | --- | --- |

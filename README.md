@@ -1,164 +1,172 @@
-# Qwen Imagen Studio
+# Image Studio
 
-**Crea y edita imágenes con IA en tu propio PC, con CPU, GPU o ambas.** Estudio web local en español para [Qwen-Image 2.1](https://huggingface.co/leejet/Qwen-Image-2.1-GGUF) con la aceleración [Viggle Turbo v0.2.1](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo): una imagen de 1024 × 1024 en unos 18 segundos con una GPU de 8 GB, sin cuentas, sin créditos y sin enviar nada a la nube.
+**Genera imágenes con IA en tu propio PC, con CPU, GPU o ambas.** Estudio web local en español para modelos de difusión abiertos:
+- **SDXL** (NoobAI-XL, Illustrious, Pony, Animagine o tus propios checkpoints), con LoRAs y modo wallpaper, desde GPUs de **4–6 GB**;
+- **Qwen-Image 2.1 + Viggle Turbo**, para instrucciones en lenguaje natural y edición con referencias en GPUs de 8 GB.
 
-![Qwen Imagen Studio](docs/capturas/01-estudio.png)
+Sin cuentas, sin créditos y sin enviar nada a la nube.
+
+![Image Studio](docs/capturas/01-estudio.png)
 
 ## Características
 
-- **Texto → imagen** y **edición con hasta 2 imágenes de referencia** («pon el zorro de la imagen 1 en…»).
-- **CPU, GPU NVIDIA (CUDA), GPU AMD/Intel (Vulkan) o CPU + GPU.** El modo automático elige lo más rápido para tu equipo, también en portátiles con GPU integrada o en PCs sin tarjeta gráfica.
-- **Todo local y privado:** los prompts, referencias e imágenes no salen del equipo. Internet solo se usa durante la instalación.
-- Formatos 1:1, 16:9, 9:16, 4:3 o tamaño libre de 256 a 2048 px; lotes de 1 a 8 imágenes; semillas reproducibles; fondo transparente.
-- **Biblioteca local** con cada imagen y sus parámetros (PNG + JSON), reutilización de ajustes, descarga y borrado con papelera.
-- Instalador que **descarga y verifica automáticamente** todo lo necesario: motores, modelos, Node.js y el runtime de Visual C++.
-- Tema claro y oscuro; interfaz adaptada a móvil.
+- **Varios modelos, una interfaz.** Elige el modelo en el selector y la interfaz muestra sus controles y ajustes recomendados. Cualquier checkpoint SDXL que copies en `models\sdxl\checkpoints` aparece solo.
+- **SDXL:**
+  - prompt negativo, CFG, sampler, etiquetas de calidad;
+  - hasta **4 LoRAs** combinados (personajes, estilos);
+  - **modo wallpaper** con segunda pasada ×1.5 (1344 × 768 → 2016 × 1152).
+- **Qwen-Image:** texto en lenguaje natural, texto dentro de la imagen y **edición con hasta 2 referencias**. Turbo hace 1024 × 1024 en ~18 s con 8 GB.
+- **CPU, GPU NVIDIA (CUDA), GPU AMD/Intel (Vulkan) o CPU + GPU.** El modo automático elige lo más rápido. Los pesos esperan en RAM y pasan a la VRAM por bloques, así que caben modelos más grandes que tu tarjeta.
+- **Todo local y privado:** Internet solo se usa durante la instalación.
+- **Biblioteca local:** cada imagen con todos sus parámetros (PNG + JSON). Puedes reutilizar ajustes, descargar y borrar con papelera.
+- Instalador que **descarga y verifica** (SHA256) motores, modelos, Node.js y el runtime de Visual C++.
+- Tema claro y oscuro (sigue al sistema) e interfaz adaptada a móvil.
 
 ## Capturas
 
-| Estudio (tema oscuro) | Creando una imagen |
+| Tema oscuro · modo wallpaper | Generando |
 | --- | --- |
 | ![Tema oscuro](docs/capturas/02-modo-oscuro.png) | ![Generando](docs/capturas/03-generando.png) |
 
-| Equipo de generación: CPU, GPU o ambas | Biblioteca local | Móvil |
-| --- | --- | --- |
-| ![Selector CPU GPU](docs/capturas/04-equipo-cpu-gpu.png) | ![Biblioteca](docs/capturas/05-biblioteca.png) | ![Móvil](docs/capturas/06-movil.png) |
+| Modelo, prompt y LoRAs | Móvil |
+| --- | --- |
+| ![Panel de modelo y LoRAs](docs/capturas/04-modelos-y-loras.png) | ![Móvil](docs/capturas/05-movil.png) |
+
+<sub>Las capturas usan una imagen de muestra en el lienzo y la biblioteca.</sub>
+
+## ¿Qué modelo instalo?
+
+| Tu equipo | Recomendado | Descarga |
+| --- | --- | ---: |
+| GPU de 4–6 GB (GTX 1060/1650, RTX 2060/3050…), o solo CPU | **NoobAI-XL 1.1** (anime) u otro SDXL | 7 GB |
+| GPU de 8 GB o más | Ambos: SDXL para anime y LoRAs, Qwen para instrucciones y edición | 24 GB |
+| Portátil con GPU integrada | SDXL en modo CPU + GPU, empezando por 768 × 768 | 7 GB |
+
+Por qué SDXL cabe donde Qwen no: [docs/MODELOS.md](docs/MODELOS.md#1-conceptos-en-dos-minutos).
 
 ## Requisitos
 
 | | Mínimo | Recomendado |
 | --- | --- | --- |
 | Sistema | Windows 10 u 11 de 64 bits | Windows 11 |
-| RAM | 16 GB (cierra otras aplicaciones pesadas) | 32 GB (equipo en el que se probó) |
-| Disco libre | 25 GB durante la instalación (13 GB al terminar) | SSD |
-| GPU | Opcional | NVIDIA con 8 GB de VRAM o más |
-| Internet | Solo para instalar (hasta 17 GB de descarga) | — |
+| RAM | 16 GB (cierra otras aplicaciones pesadas) | 32 GB |
+| Disco libre | 9 GB (solo SDXL) · 25 GB (Qwen) | SSD |
+| GPU | Opcional | NVIDIA de 6 GB o más (SDXL) · 8 GB (Qwen) |
+| Internet | Solo para instalar | — |
 
-No necesitas instalar Python, Node.js, CUDA ni ninguna otra herramienta: el instalador se encarga. Para GPU NVIDIA basta con tener el controlador de NVIDIA actualizado; para AMD/Intel, su controlador con soporte Vulkan.
+No necesitas Python, CUDA ni ninguna otra herramienta. Basta con el controlador de tu GPU actualizado: NVIDIA, o AMD/Intel con soporte Vulkan.
 
-## Instalación paso a paso
+## Instalación
 
-1. **Descarga la app.** En esta página pulsa **Code → Download ZIP** y descomprímelo en una carpeta con al menos 25 GB libres, por ejemplo `D:\Programas\qwen-imagen-studio`. También puedes clonarla:
+1. **Descarga la app.** **Code → Download ZIP** y descomprímela en una carpeta con espacio, por ejemplo `D:\Programas\image-studio`. Evita carpetas de OneDrive: los modelos pesan varios GB. También puedes clonarla:
    ```powershell
-   git clone https://github.com/jceronch1/qwen-imagen-studio.git
+   git clone https://github.com/brandonalvarez1220/qwen-imagen-studio.git
    ```
-   Evita carpetas sincronizadas con OneDrive o similares: los modelos son archivos muy grandes.
+2. **Ejecuta `Instalar Image Studio.cmd`** y elige en el menú:
+   ```
+   1) Anime SDXL: NoobAI-XL 1.1  (descarga de 7 GB, GPU de 4-6 GB o CPU)
+   2) Qwen-Image 2.1 + Viggle Turbo  (descarga de 17 GB, GPU de 8 GB o mas)
+   3) Ambos
+   ```
+   - Si Windows muestra *«Windows protegió su PC»*: **Más información → Ejecutar de todas formas**.
+   - Atajos: **`Instalar modelo anime (NoobAI-XL).cmd`** (opción 1 sin preguntar) e **`Instalar solo CPU.cmd`** (sin motores de GPU).
+   - Si se corta Internet, vuelve a ejecutarlo: reanuda las descargas y verifica cada archivo.
+3. **Abre `Iniciar Image Studio.cmd`.** Se abre http://127.0.0.1:7871 y el modelo se carga en segundo plano mientras escribes.
+4. **Para cerrar, usa `Detener Image Studio.cmd`.** Libera la memoria. Tus imágenes quedan en `outputs\`.
 
-2. **Ejecuta el instalador.** Haz doble clic en **`Instalar Qwen Imagen Studio.cmd`**.
-   - Si Windows muestra *«Windows protegió su PC»*, pulsa **Más información → Ejecutar de todas formas** (ocurre con cualquier script descargado de Internet).
-   - En un PC **sin tarjeta gráfica** puedes usar **`Instalar solo CPU.cmd`**, que omite los motores de GPU.
-
-3. **Deja que termine.** El instalador muestra cada paso. Descarga solo lo que falta y verifica cada archivo con su SHA256 oficial; si se corta Internet, vuelve a ejecutarlo y continúa donde se quedó.
-
-   | Paso | Qué hace | Tamaño |
-   | --- | --- | ---: |
-   | Node.js | Si no tienes Node.js 22 o posterior, descarga una copia portátil dentro de la carpeta de la app (no toca tu sistema) | 37 MB |
-   | Visual C++ | Si falta el runtime de Visual C++ 2015‑2022, lo instala. Windows pedirá **permiso de administrador** una vez | 25 MB |
-   | Motores | `stable-diffusion.cpp` para CPU y Vulkan, y CUDA si detecta una GPU NVIDIA | 0,05–0,95 GB |
-   | Modelos | Codificador de texto Qwen3‑VL 8B, lector de imágenes de referencia y VAE | 6,9 GB |
-   | Modelo de imagen | Descarga la base oficial Qwen-Image 2.1 (Q8_0) y el LoRA Viggle Turbo, los fusiona en un modelo optimizado de 4,2 GB y **borra los temporales** | 9,1 GB temporales |
-
-   La fusión del paso final se calcula en tu CPU: unos 8 minutos en un procesador de 16 hilos, más en equipos modestos. Al terminar verás **«Instalacion completa con el modelo optimizado»**.
-
-4. **Abre el estudio.** Haz doble clic en **`Iniciar Qwen Imagen Studio.cmd`**. Se abre el navegador en http://127.0.0.1:7871 y los modelos se cargan en segundo plano (indicador **Cargando modelos…**, unos 10 s con GPU). Mientras tanto ya puedes escribir tu primera idea.
-
-5. **Para cerrarlo**, usa **`Detener Qwen Imagen Studio.cmd`**: cierra la app y libera la memoria. Tus imágenes quedan guardadas en la carpeta `outputs`.
-
-> Si el cálculo de la fusión no puede completarse, el instalador instala automáticamente el **modo compatible** (la misma calidad, aplicando el LoRA durante la generación, algo más lento). Puedes volver a ejecutar el instalador más tarde para crear el modelo optimizado.
+Qué descarga cada paso, parámetros del instalador y cómo añadir modelos: [docs/MODELOS.md](docs/MODELOS.md#3-instalar-un-modelo-del-catálogo).
 
 ## Cómo crear una imagen
 
-1. **Describe tu imagen** en español o inglés. «Dame una idea» carga un ejemplo.
-2. Opcional: **añade hasta 2 imágenes de referencia** (PNG, JPG o WebP de hasta 8 MB) y menciónalas como «imagen 1» e «imagen 2» para editarlas o combinarlas.
-3. Elige el **formato** (512 × 512 para probar, 1024 × 1024 para crear) o escribe ancho y alto (múltiplos de 32, de 256 a 2048).
-4. Deja **6 pasos** (configuración Turbo recomendada), elige cuántas imágenes y la **semilla** (−1 = aleatoria; la misma semilla repite la imagen).
-5. Pulsa **Crear imagen** o `Ctrl + Enter`. Puedes cerrar la pestaña: la generación continúa y la web la recupera al volver.
+### Con un modelo SDXL (anime, ilustración)
 
-Cada imagen se guarda en `outputs/` junto a un JSON con todos sus parámetros. Desde la biblioteca puedes **reutilizar ajustes**, **usarla como referencia**, descargarla o eliminarla (lo eliminado va a `outputs/.trash/`).
+1. **01 · Modelo:** elige NoobAI-XL u otro checkpoint.
+2. **02 · Prompt:** escribe **tags separados por comas**, al estilo Danbooru: `1girl, solo, frieren, sousou no frieren, white hair, elf, scenery, sunset`.
+   - NoobAI e Illustrious reconocen muchos personajes por su tag, sin LoRA.
+   - El prompt negativo indica lo que se quiere evitar.
+   - «Etiquetas de calidad» antepone las que recomienda el modelo.
+3. **03 · LoRAs:** marca los que quieras (personajes o estilos de `models\sdxl\loras`) y ajusta el peso (0,6–1,0). Si la ficha del LoRA indica una *trigger word*, escríbela en el prompt.
+4. **04 · Formato:** 1:1, 16:9 o 9:16 a ~1 MP. Para **wallpapers**, 16:9 + **Modo wallpaper**.
+5. **05 · Ajustes:** 28 pasos, CFG 5 y Euler a por defecto (**Restaurar recomendados** los repone). CFG mide cuánto se fuerza el prompt: muy alto quema colores, muy bajo ignora tags.
 
-## Modelos anime SDXL (NoobAI-XL y los tuyos) · GPUs de 4–6 GB
+### Con Qwen-Image
 
-Además de Qwen-Image, el estudio genera con **cualquier checkpoint SDXL**: [NoobAI-XL 1.1](https://huggingface.co/Laxhar/noobai-XL-1.1) (anime, recomendado), Illustrious, Pony, Animagine… SDXL usa codificadores de texto CLIP (<1 B parámetros) en lugar de un LLM de 8 B, por eso cabe en tarjetas de **4–6 GB de VRAM**: los pesos esperan en la RAM y pasan a la VRAM por bloques.
+Escribe en español o inglés, en frases completas. Opcionalmente añade **hasta 2 referencias** y menciónalas como «imagen 1» e «imagen 2» para editarlas o combinarlas. Deja **6 pasos** (configuración Turbo).
 
-1. **Instala NoobAI-XL:** doble clic en **`Instalar modelo anime (NoobAI-XL).cmd`**. Instala los motores y el checkpoint (6,9 GB, verificado con el SHA256 que publica Hugging Face) **sin descargar Qwen-Image**. Si ya tienes Qwen, puedes usar ambos: `scripts\install.ps1 -Models all`.
-2. **Otros checkpoints:** copia cualquier `.safetensors` SDXL en `models\sdxl\checkpoints\`. Aparece en **00 · Modelo** con ajustes SDXL genéricos.
-3. **LoRAs de personajes o estilos:** copia los `.safetensors` (LoRAs **SDXL**: los de SD 1.5 o Flux no son compatibles) en `models\sdxl\loras\` y recarga la página. Márcalos en **02 · LoRAs** y ajusta el peso (0,6–1,0 suele ir bien). Puedes combinar hasta 4. Muchos LoRAs necesitan su *trigger word* en el prompt: está en la ficha del LoRA.
-4. **Escribe con tags** estilo Danbooru: `1girl, solo, frieren, sousou no frieren, white hair, elf, scenery, sunset`. NoobAI se entrenó con Danbooru y reconoce por su tag a muchos personajes populares **sin LoRA**: pruébalo antes de buscar uno. «Etiquetas de calidad» antepone `masterpiece, best quality, newest, absurdres, highres, safe`.
-5. **Wallpapers:** elige 16:9 (1344 × 768) y activa **Modo wallpaper**: una segunda pasada (*hires fix*) amplía el latente ×1.5 y vuelve a detallarlo → 2016 × 1152. Para 9:16 de móvil usa 768 × 1344.
-
-Ajustes recomendados (se cargan al elegir el modelo; **Restaurar recomendados** los repone): 28 pasos, CFG 5, Euler a. CFG mide cuánto se fuerza el prompt frente a la predicción sin prompt: muy alto quema colores, muy bajo ignora tags. El prompt negativo indica lo que se quiere evitar.
-
-> Respeta la licencia de cada modelo y LoRA (NoobAI-XL usa la *Fair AI Public License 1.0-SD*). Los personajes tienen derechos de autor: úsalo para fan art personal.
+En ambos casos:
+- La **semilla** −1 es aleatoria; la misma semilla y los mismos ajustes repiten la imagen.
+- Pulsa **Crear imagen** o `Ctrl + Enter`.
+- Puedes cerrar la pestaña: la generación sigue y la web la recupera al volver.
 
 ## CPU, GPU o ambas
 
-En **05 · Equipo de generación → Procesamiento**:
+En **06 · Equipo → Procesamiento**:
 
 | Modo | Cuándo usarlo |
 | --- | --- |
 | **Automático** | Recomendado. GPU si hay tarjeta dedicada, CPU + GPU si solo hay GPU integrada, CPU si no hay GPU compatible. |
 | **GPU** | Tarjeta dedicada NVIDIA (CUDA) o AMD/Intel (Vulkan). Lo más rápido. |
-| **CPU + GPU** | GPU integrada (por ejemplo Radeon 780M) o con poca VRAM: el texto se procesa en la CPU y la imagen en la GPU. |
+| **CPU + GPU** | GPU integrada o con poca VRAM: el texto se procesa en la CPU y la imagen en la GPU. |
 | **CPU** | Equipos sin GPU. Funciona, pero tarda minutos por imagen: empieza con 512 × 512. |
 
-**Atención rápida** (activada por defecto, solo NVIDIA **RTX 30 o posterior**, con Qwen-Image) usa SageAttention: un 12 % más rápido con la misma composición y calidad; los detalles finos pueden variar ligeramente. Desactívala si quieres reproducir exactamente imágenes creadas sin ella.
+**Atención rápida** (SageAttention) solo aparece con NVIDIA **RTX 30 o posterior** y Qwen-Image: ~12 % más rápido, con detalles finos ligeramente distintos.
 
-## Rendimiento de referencia
+Rendimiento medido de Qwen-Image (RTX 4070 Laptop 8 GB, 6 pasos): 1024 × 1024 en 17–18 s; 512 × 512 en 4,4 s. Detalles en [docs/QWEN-IMAGE.md](docs/QWEN-IMAGE.md).
 
-Portátil con Ryzen 7 8845HS, 32 GB de RAM y RTX 4070 Laptop de 8 GB, 6 pasos:
+## Documentación
 
-| Caso | Tiempo por imagen |
-| --- | ---: |
-| GPU · 512 × 512 | 4,4 s |
-| GPU · 1024 × 1024 | 17–18 s |
-| GPU · 2048 × 2048 | 88 s |
-| CPU + GPU integrada (Radeon 780M) · 512 × 512 | 74 s |
-| Solo CPU · 512 × 512 | ≈ 4 min |
-
-Los detalles de cada optimización y cómo se midieron están en [docs/TECNICO.md](docs/TECNICO.md).
+| Documento | Contenido |
+| --- | --- |
+| [docs/MODELOS.md](docs/MODELOS.md) | Conceptos (codificador, difusión, VAE). Familias soportadas, instalar y registrar checkpoints, dónde descargar, verificar hashes, LoRAs, cuantización GGUF, licencias |
+| [docs/MOTOR.md](docs/MOTOR.md) | Ejecutables (`sd-server.exe`, `sd-cli.exe`), runtimes CPU/CUDA/Vulkan, argumentos por modelo, uso manual del motor, puertos, variables, registros, actualizar el motor |
+| [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Módulos, ciclo de una imagen, API de la app, cómo añadir una familia nueva (FLUX, SD 1.5…), pruebas y convenciones |
+| [docs/QWEN-IMAGE.md](docs/QWEN-IMAGE.md) | Qwen-Image 2.1 + Viggle Turbo: optimizaciones medidas, LoRA fusionado, planificador Turbo |
 
 ## Solución de problemas
 
 | Síntoma | Solución |
 | --- | --- |
 | «Descarga interrumpida» durante la instalación | Vuelve a ejecutar el instalador: reanuda la descarga. |
-| «Falta …. Ejecuta Instalar Qwen Imagen Studio.cmd» al iniciar | La instalación no terminó; ejecuta de nuevo el instalador. |
-| «La GPU no tuvo memoria suficiente» | Usa un tamaño menor, el modo **CPU + GPU** o **CPU**, y cierra otros programas que usen la GPU. |
-| «No quedó suficiente memoria RAM» | Cierra aplicaciones pesadas o reduce el tamaño de la imagen. |
+| «Falta … Ejecuta Instalar Image Studio.cmd» al iniciar | No hay ningún modelo completo instalado; ejecuta de nuevo el instalador. |
+| «La GPU no tuvo memoria suficiente» | Usa un tamaño menor o el modo **CPU + GPU**, desactiva el modo wallpaper y cierra otros programas que usen la GPU. |
+| «No quedó suficiente memoria RAM» | Cierra aplicaciones pesadas, reduce el tamaño o usa un checkpoint cuantizado ([MODELOS.md §7](docs/MODELOS.md#7-memoria-cuantización-y-gguf)). |
 | El motor no inicia con una GTX 10xx/16xx o RTX 20xx | Actualiza la app: SageAttention requiere RTX 30+ y ahora solo se activa en esas GPUs. |
-| Con SDXL la GPU se queda sin memoria (4 GB) | Desactiva el modo wallpaper, usa 1024 × 1024 o menos, o el modo **CPU + GPU**. |
 | No aparece mi checkpoint o LoRA | Debe ser `.safetensors` o `.gguf`, sin caracteres especiales en el nombre, en `models\sdxl\checkpoints` o `models\sdxl\loras`. Recarga la página. |
-| No aparece mi GPU | Actualiza el controlador (NVIDIA, AMD o Intel) y vuelve a abrir la app. |
-| El puerto 7871 está ocupado | Cierra la otra instancia con `Detener Qwen Imagen Studio.cmd`. |
+| Imágenes deformes o «quemadas» con un LoRA | Baja su peso (0,6–0,8) o el CFG, y comprueba que el LoRA sea para SDXL y no para SD 1.5 o Flux. |
+| No aparece mi GPU | Actualiza el controlador y vuelve a abrir la app. |
+| El puerto 7871 está ocupado | Cierra la otra instancia con `Detener Image Studio.cmd`. |
 
-Los registros están en la carpeta `logs/` (`engine.err.log`, `engine.out.log`, `app.err.log`).
+Los registros están en `logs\` (qué contiene cada uno: [MOTOR.md §6](docs/MOTOR.md#6-puertos-variables-y-registros)).
 
 ## Actualizar o desinstalar
 
-- **Actualizar:** descarga la nueva versión encima de la carpeta (o `git pull`) y ejecuta de nuevo el instalador; solo descarga lo que haya cambiado.
-- **Desinstalar:** ejecuta `Detener Qwen Imagen Studio.cmd` y borra la carpeta. Guarda antes tus imágenes de `outputs/` si las quieres conservar. La app no escribe fuera de su carpeta (salvo el runtime de Visual C++, si lo instaló).
+- **Actualizar:** descarga la nueva versión encima de la carpeta (o `git pull`) y ejecuta de nuevo el instalador. Solo descarga lo que falte.
+- **Desinstalar:** ejecuta `Detener Image Studio.cmd` y borra la carpeta. Guarda antes `outputs\` si quieres conservar tus imágenes. La app no escribe fuera de su carpeta, salvo el runtime de Visual C++ si lo instaló.
 
 ## Estructura del proyecto
 
 ```
 app/                  Interfaz web (HTML, CSS y JavaScript sin dependencias)
-scripts/              Servidor Node, gestor del motor, instalador y pruebas
-docs/                 Documentación técnica y capturas
+scripts/              Servidor Node, catálogo de modelos, gestor del motor, instalador y pruebas
+docs/                 Guías (modelos, motor, arquitectura, Qwen-Image) y capturas
 qa/optimizacion/      Mediciones usadas para elegir la configuración del motor
-models/               Licencia y aviso de los modelos (los pesos los descarga el instalador)
-model-config.json     Versiones, revisiones y hashes fijados de los modelos
-sdxl-models.json      Catálogo SDXL: NoobAI-XL y ajustes recomendados por checkpoint
+models/               Licencias de los modelos (los pesos los descarga el instalador)
+model-config.json     Qwen-Image: versiones, revisiones y hashes fijados
+sdxl-models.json      Catálogo SDXL: checkpoints conocidos y sus ajustes recomendados
 *.cmd                 Instalar, iniciar y detener con doble clic
 ```
 
-Carpetas creadas por el instalador y la app (no forman parte del repositorio): `models/` (pesos), `runtime-*` (motores), `node/`, `outputs/`, `logs/` y `.downloads/`.
+Carpetas creadas por el instalador y la app (no forman parte del repositorio): `models\` (pesos), `runtime-*` (motores), `node\`, `outputs\`, `logs\` y `.downloads\`.
 
 ## Licencias y créditos
 
-- **Código de la app:** licencia [MIT](LICENSE). Puedes usarlo, modificarlo y redistribuirlo, también con fines comerciales, conservando el aviso de copyright. La licencia MIT cubre solo el código, no los modelos.
-- **Modelos:** Qwen-Image 2.1 y el LoRA Viggle Turbo están bajo la **Qwen RESEARCH LICENSE AGREEMENT**, que permite solo **uso no comercial (investigación o evaluación)**; para uso comercial hay que solicitar una licencia a Qwen. Texto completo en [models/LICENSE-Viggle.txt](models/LICENSE-Viggle.txt) y aviso en [models/NOTICE-Viggle.txt](models/NOTICE-Viggle.txt). *Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) 2026 Hangzhou Tongyi Laboratory Technology Co., Ltd. All Rights Reserved.* **Built with Qwen.**
-- El codificador Qwen3‑VL y el VAE se descargan de sus repositorios oficiales y mantienen sus propias licencias; consulta cada página enlazada en [docs/TECNICO.md](docs/TECNICO.md).
-- Motor de inferencia: [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) de leejet, basado en [ggml](https://github.com/ggml-org/ggml).
-- Aceleración Turbo: [Viggle](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo).
+- **Origen:** Image Studio parte de [Qwen Imagen Studio](https://github.com/jceronch1/qwen-imagen-studio) de jceronch1 (motor gestionado, instalador, biblioteca y optimizaciones de Qwen-Image). Se amplió a varios modelos y se rediseñó la interfaz.
+- **Código de la app:** licencia [MIT](LICENSE). Puedes usarlo, modificarlo y redistribuirlo, también con fines comerciales, conservando el aviso de copyright. Cubre solo el código, no los modelos.
+- **Modelos:** cada uno conserva su licencia ([docs/MODELOS.md §8](docs/MODELOS.md#8-licencias-y-uso-responsable)).
+  - **NoobAI-XL:** *Fair AI Public License 1.0-SD* ([ficha](https://huggingface.co/Laxhar/noobai-XL-1.1)).
+  - **Qwen-Image 2.1 y el LoRA Viggle Turbo:** **Qwen RESEARCH LICENSE AGREEMENT**, solo **uso no comercial** (investigación o evaluación). Texto en [models/LICENSE-Viggle.txt](models/LICENSE-Viggle.txt) y aviso en [models/NOTICE-Viggle.txt](models/NOTICE-Viggle.txt). *Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) 2026 Hangzhou Tongyi Laboratory Technology Co., Ltd. All Rights Reserved.* **Built with Qwen.**
+  - El codificador Qwen3-VL y el VAE de Qwen mantienen sus propias licencias ([docs/QWEN-IMAGE.md](docs/QWEN-IMAGE.md#archivos-de-modelos)).
+- **Motor de inferencia:** [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) de leejet, basado en [ggml](https://github.com/ggml-org/ggml).
+- **Aceleración Turbo:** [Viggle](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo).
 
 Este repositorio contiene solo el código de la app; no redistribuye ningún peso de modelo.

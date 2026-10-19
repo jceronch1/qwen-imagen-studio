@@ -23,5 +23,5 @@ assert.equal(enginePayload(validate(valid)).sample_params.sample_steps,4);
 assert.equal(enginePayload(validate({...valid,seed:42,count:2}),1).seed,43);
 const base='http://127.0.0.1:7871';
 let r=await fetch(base+'/api/jobs',{method:'POST',headers:{'Content-Type':'application/json','Origin':'https://example.com'},body:JSON.stringify(valid)});assert.equal(r.status,403);
-r=await fetch(base+'/api/status');assert.equal((await r.json()).app,'qwen-turbo-local');
+r=await fetch(base+'/api/status');assert.equal((await r.json()).app,'image-studio-local');
 console.log('PASS: input validation, seed 0, batch seeds, Turbo scheduler, CFG, origin isolation and live status.');

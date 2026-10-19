@@ -22,6 +22,8 @@ function renderModel() {
   const p = preset(), sdxl = p.family === 'sdxl';
   document.body.classList.toggle('family-sdxl', sdxl);
   $('#modelFamily').textContent = sdxl ? 'SDXL' : 'Qwen-Image';
+  $('#headerFamily').textContent = state.models.length ? (sdxl ? 'SDXL' : 'Qwen') : '—';
+  $('#headerModel').textContent = state.models.length ? (p.label || p.id) : state.catalog ? 'Ningún modelo instalado' : 'Detectando modelos…';
   const downloads = state.catalog?.downloads?.length ? ' Disponible para descargar: ' + state.catalog.downloads.map(d => d.label + ' (' + d.sizeGB + ' GB)').join(', ') + ' — ejecuta «Instalar modelo anime (NoobAI-XL).cmd».' : '';
   $('#modelHint').textContent = sdxl
     ? (p.source ? 'Fuente: huggingface.co/' + p.source + '. ' : 'Checkpoint propio en ' + (state.catalog?.checkpointDir || 'models/sdxl/checkpoints') + '. ') + (p.license ? 'Licencia: ' + p.license + '. ' : '') + 'Sin referencias; admite LoRAs y prompt negativo.' + downloads
@@ -39,11 +41,11 @@ function renderLoras() {
     const box = document.createElement('input'); box.type = 'checkbox'; box.checked = state.lorasOn.has(l.file); box.setAttribute('aria-label', 'Usar LoRA ' + l.name);
     const name = document.createElement('span'); name.textContent = l.name; name.title = l.file;
     const weight = document.createElement('input'); weight.type = 'number'; weight.min = -2; weight.max = 2; weight.step = 0.05; weight.value = state.lorasOn.get(l.file) ?? 0.8; weight.setAttribute('aria-label', 'Peso de ' + l.name); weight.dataset.number = '';
-    const sync = () => { if (box.checked) state.lorasOn.set(l.file, Math.max(-2, Math.min(2, +weight.value || 0))); else state.lorasOn.delete(l.file); row.classList.toggle('on', box.checked); $('#loraCount').textContent = state.lorasOn.size + ' activos'; persist(); };
+    const sync = () => { if (box.checked) state.lorasOn.set(l.file, Math.max(-2, Math.min(2, +weight.value || 0))); else state.lorasOn.delete(l.file); row.classList.toggle('on', box.checked); $('#loraCount').textContent = state.lorasOn.size + (state.lorasOn.size === 1 ? ' activo' : ' activos'); persist(); };
     box.onchange = sync; weight.oninput = () => { if (box.checked) sync(); };
     row.append(box, name, weight); $('#loras').append(row);
   }
-  $('#loraCount').textContent = state.lorasOn.size + ' activos';
+  $('#loraCount').textContent = state.lorasOn.size + (state.lorasOn.size === 1 ? ' activo' : ' activos');
   $('#loraHint').hidden = false;
 }
 async function loadModels() {
@@ -140,7 +142,7 @@ $('#theme').onclick=()=>{document.body.classList.toggle('dark');try{localStorage
 function selectImage(item) {
   state.selected=item; $('#result').src=item.src;$('#result').hidden=false;$('#empty').hidden=true;$('#resultInfo').hidden=false;
   $('#resultTitle').textContent=item.prompt.length>85?item.prompt.slice(0,85)+'…':item.prompt;
-  $('#resultMeta').textContent=`${item.modelLabel?item.modelLabel+' · ':''}${item.outputWidth||item.width} × ${item.outputHeight||item.height} · ${item.steps} pasos${item.cfg&&item.family==='sdxl'?' · CFG '+item.cfg:''}${item.loras?.length?' · '+item.loras.length+' LoRA':''} · Semilla ${item.seed} · ${item.refsCount||0} referencias ${item.family==='sdxl'?'':' · v'+(item.modelVersion||'0.1')}${item.computeUsed?' · '+({cpu:'CPU',gpu:'GPU',hybrid:'CPU + GPU',external:'Motor externo'}[item.computeUsed]||item.computeUsed):''}${item.loraApplication==='merged'?' · LoRA fusionado':''}${item.seconds?' · '+item.seconds+' s':''}`;
+  $('#resultMeta').textContent=`${item.modelLabel?item.modelLabel+' · ':''}${item.outputWidth||item.width} × ${item.outputHeight||item.height} · ${item.steps} pasos${item.cfg&&item.family==='sdxl'?' · CFG '+item.cfg:''}${item.loras?.length?' · '+item.loras.length+' LoRA':''} · Semilla ${item.seed}${item.family==='sdxl'?'':' · '+(item.refsCount||0)+' referencias'} ${item.family==='sdxl'?'':' · v'+(item.modelVersion||'0.1')}${item.computeUsed?' · '+({cpu:'CPU',gpu:'GPU',hybrid:'CPU + GPU',external:'Motor externo'}[item.computeUsed]||item.computeUsed):''}${item.loraApplication==='merged'?' · LoRA fusionado':''}${item.seconds?' · '+item.seconds+' s':''}`;
   $('#download').href=item.src;$('#download').download=`${item.family==='sdxl'?'sdxl':'qwen'}-imagen-${item.seed}.png`;
   $('#metadata').href=`/outputs/${item.id}.json`;$('#metadata').download=`qwen-imagen-${item.seed}.json`;
   document.querySelectorAll('.thumb').forEach(b=>b.classList.toggle('selected',b.dataset.id===item.id));
@@ -224,6 +226,6 @@ for(const [key,values] of Object.entries(numberPresets)){
 document.addEventListener('click',e=>{if(!e.target.closest('.number-combo'))closeNumberMenus();});
 
 let savedSettings=null,savedModel=null;
-try{if(localStorage.getItem('turbo.theme')==='dark')document.body.classList.add('dark');savedSettings=JSON.parse(localStorage.getItem('turbo.settings')||'null');savedModel=savedSettings?.model||null;if(savedSettings){const {model,...rest}=savedSettings;setSettings(rest);}}catch{}
+try{const theme=localStorage.getItem('turbo.theme');if(theme==='dark'||(!theme&&matchMedia('(prefers-color-scheme: dark)').matches))document.body.classList.add('dark');savedSettings=JSON.parse(localStorage.getItem('turbo.settings')||'null');savedModel=savedSettings?.model||null;if(savedSettings){const {model,...rest}=savedSettings;setSettings(rest);}}catch{}
 try{if(localStorage.getItem('turbo.modelVersion')!=='0.2.1'){$('#steps').value=6;localStorage.setItem('turbo.modelVersion','0.2.1');}}catch{}
 refreshForm();loadModels().then(()=>{if(savedSettings?.model===$('#model').value)setSettings(savedSettings);});loadGallery().catch(e=>notice(e.message,true));status();

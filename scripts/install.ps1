@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([ValidateSet('auto','cpu','cuda','vulkan')][string]$Backend='auto', [switch]$NoMerge, [ValidateSet('qwen','anime','all')][string]$Models='qwen')
+param([ValidateSet('auto','cpu','cuda','vulkan')][string]$Backend='auto', [switch]$NoMerge, [ValidateSet('qwen','anime','all')][string]$Models, [string[]]$Checkpoints=@('NoobAI-XL-v1.1.safetensors'))
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
@@ -62,7 +62,17 @@ function Runtime([string]$Folder,[string]$Kind,[string]$Sha) {
     Remove-Item -LiteralPath $Zip
 }
 
-Write-Host 'Instalador de Qwen Imagen Studio' -ForegroundColor Green
+Write-Host 'Instalador de Image Studio' -ForegroundColor Green
+# Without -Models the installer asks; the .cmd shortcuts pass it for a one-click install.
+if (!$Models) {
+    Write-Host ''
+    Write-Host 'Que modelos quieres instalar?'
+    Write-Host '  1) Anime SDXL: NoobAI-XL 1.1  (descarga de 7 GB, GPU de 4-6 GB o CPU)'
+    Write-Host '  2) Qwen-Image 2.1 + Viggle Turbo  (descarga de 17 GB, GPU de 8 GB o mas)'
+    Write-Host '  3) Ambos'
+    do { $Choice = Read-Host 'Escribe 1, 2 o 3' } while ($Choice -notin '1','2','3')
+    $Models = @{ '1' = 'anime'; '2' = 'qwen'; '3' = 'all' }[$Choice]
+}
 $FreeGB = [math]::Round((Get-Item -LiteralPath $ProjectRoot).PSDrive.Free / 1GB, 1)
 if ($Models -eq 'anime' -and $FreeGB -lt 9) { Write-Warning "Hay $FreeGB GB libres. El modelo anime ocupa unos 7 GB." }
 elseif ($Models -ne 'anime' -and $FreeGB -lt 25) { Write-Warning "Hay $FreeGB GB libres. La instalacion necesita unos 25 GB durante el proceso y ocupa unos 13 GB al terminar." }
@@ -154,17 +164,23 @@ if ($Models -ne 'anime') {
 }
 
 if ($Models -ne 'qwen') {
-    Step 'Modelo anime SDXL: NoobAI-XL 1.1 (6.9 GB, funciona con GPUs de 4-6 GB)'
-    $Sdxl = Get-Content -LiteralPath 'sdxl-models.json' -Raw | ConvertFrom-Json
+    # Checkpoints registered in sdxl-models.json with a download url (docs/MODELOS.md).
+    $Sdxl = Get-Content -LiteralPath 'sdxl-models.json' -Raw -Encoding UTF8 | ConvertFrom-Json
     New-Item -ItemType Directory -Force -Path $Sdxl.checkpointDir, $Sdxl.loraDir | Out-Null
-    $Name = 'NoobAI-XL-v1.1.safetensors'
-    $Entry = $Sdxl.known.$Name
-    Download $Entry.url (Join-Path $Sdxl.checkpointDir $Name) (Get-HfSha256 $Entry.url)
-    Write-Host ('Licencia del modelo: ' + $Entry.license + ' (https://huggingface.co/' + $Entry.source + ')')
+    foreach ($Name in $Checkpoints) {
+        $Entry = $Sdxl.known.$Name
+        if (!$Entry -or !$Entry.url) { throw "$Name no esta registrado con una url en sdxl-models.json." }
+        Step ('Modelo SDXL: ' + $Entry.label + ' (' + $Entry.sizeGB + ' GB, funciona con GPUs de 4-6 GB)')
+        # A pinned sha256 in the catalog wins; otherwise Hugging Face announces it.
+        $Sha = if ($Entry.sha256) { $Entry.sha256.ToLowerInvariant() } elseif ($Entry.url -like 'https://huggingface.co/*') { Get-HfSha256 $Entry.url } else { throw "Agrega el sha256 de $Name en sdxl-models.json: solo Hugging Face publica el hash automaticamente." }
+        Download $Entry.url (Join-Path $Sdxl.checkpointDir $Name) $Sha
+        if ($Entry.license) { Write-Host ('Licencia del modelo: ' + $Entry.license + $(if ($Entry.source) { ' (https://huggingface.co/' + $Entry.source + ')' } else { '' })) }
+    }
     Write-Host ('Tus propios checkpoints SDXL van en ' + $Sdxl.checkpointDir + ' y los LoRAs SDXL en ' + $Sdxl.loraDir + '.')
 }
 
 Write-Host ''
-if ($Models -eq 'anime') { Write-Host 'Instalacion completa con el modelo anime NoobAI-XL.' -ForegroundColor Green }
+if ($Models -eq 'anime') { Write-Host ('Instalacion completa: ' + ($Checkpoints -join ', ') + '.') -ForegroundColor Green }
+elseif ($Models -eq 'all') { Write-Host ('Instalacion completa con NoobAI-XL y Qwen-Image' + $(if ($Merged) { ' optimizado.' } else { ' en modo compatible.' })) -ForegroundColor Green }
 else { Write-Host ('Instalacion completa' + $(if ($Merged) { ' con el modelo optimizado.' } else { ' en modo compatible. Ejecuta de nuevo el instalador para crear el modelo optimizado.' })) -ForegroundColor Green }
-Write-Host 'Ejecuta "Iniciar Qwen Imagen Studio.cmd" para abrir el estudio.' -ForegroundColor Green
+Write-Host 'Ejecuta "Iniciar Image Studio.cmd" para abrir el estudio.' -ForegroundColor Green
