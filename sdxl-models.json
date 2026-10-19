@@ -5,7 +5,13 @@
     "steps": 28,
     "cfg": 5.5,
     "sampler": "euler_a",
-    "negative": "worst quality, low quality, lowres, blurry, jpeg artifacts, bad anatomy, bad hands, extra fingers, signature, watermark, username, logo, text"
+    "negative": "worst quality, low quality, lowres, blurry, jpeg artifacts, bad anatomy, bad hands, extra fingers, signature, watermark, username, logo, text",
+    "ideas": [
+      "1girl, solo, long hair, school uniform, cherry blossoms, wind, looking back, sunset, scenery",
+      "1boy, solo, black coat, katana, rain, neon lights, city street, night, reflections, cinematic lighting",
+      "no humans, scenery, floating islands, waterfall, clouds, blue sky, fantasy castle, wide shot, detailed background",
+      "1girl, solo, knight, silver armor, cape, holding sword, castle ruins, sunset, wind, from below"
+    ]
   },
   "known": {
     "NoobAI-XL-v1.1.safetensors": {
