@@ -1,14 +1,11 @@
 import { randomInt } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { MODEL_FILE, SAMPLERS, presetFor } from './models.mjs';
 export const MODEL = JSON.parse(readFileSync(resolve(import.meta.dirname,'..','model-config.json'),'utf8'));
 
 // The merged transformer must come from the pinned LoRA and from the pinned Q8_0 or Q4_K base.
-export function mergedProofValid(proof, model = MODEL) {
-  return proof?.output === model.merged && proof.loraSha256 === model.loraSha256 && Number.isInteger(proof.outputBytes)
-    && ((!!proof.preciseBaseSha256 && proof.preciseBaseSha256 === model.preciseBaseSha256) || (!!proof.baseSha256 && proof.baseSha256 === model.baseSha256));
-}
-
+export { mergedProofValid } from './models.mjs';
 export function validate(input) {
   const fail = message => { throw Object.assign(new Error(message), { status: 400 }); };
   if (!input || typeof input !== 'object') fail('Solicitud inválida.');
@@ -21,7 +18,10 @@ export function validate(input) {
   };
   const width = integer('width', 256, 2048, 1024), height = integer('height', 256, 2048, 1024);
   if (width % 32 || height % 32) fail('El ancho y alto deben ser múltiplos de 32.');
-  const steps = integer('steps', 1, 40, MODEL.recommendedSteps), count = integer('count', 1, 8, 1);
+  const model = input.model ?? 'qwen';
+  if (typeof model !== 'string' || (model !== 'qwen' && !(model.startsWith('sdxl:') && MODEL_FILE.test(model.slice(5))))) fail('Modelo inválido.');
+  const sdxl = model !== 'qwen', preset = presetFor(model);
+  const steps = integer('steps', 1, sdxl ? 60 : 40, preset.steps), count = integer('count', 1, 8, 1);
   let seed = integer('seed', -1, 2147483647, -1);
   if (seed === -1) seed = randomInt(0, 2147483647 - count);
   if (seed + count - 1 > 2147483647) fail('La semilla del lote excede el máximo permitido.');
@@ -30,6 +30,7 @@ export function validate(input) {
   const threads = integer('threads', 0, 128, 0);
   const refs = input.refs ?? [];
   if (!Array.isArray(refs) || refs.length > 2) fail('Puedes usar hasta 2 referencias.');
+  if (sdxl && refs.length) fail('Este modelo no usa imágenes de referencia. Quítalas o elige Qwen-Image.');
   for (const ref of refs) {
     if (typeof ref !== 'string' || ref.length > 12 * 1024 * 1024 || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(ref)) fail('Referencia inválida. Usa PNG, JPEG o WebP de hasta 8 MB.');
     const bytes = Buffer.from(ref.split(',')[1], 'base64');
@@ -39,7 +40,21 @@ export function validate(input) {
     if (!png && !jpg && !webp) fail('El contenido de la referencia no es una imagen compatible.');
   }
   if (input.fastAttention !== undefined && typeof input.fastAttention !== 'boolean') fail('fastAttention debe ser verdadero o falso.');
-  return { prompt, width, height, steps, count, seed, refs, compute, threads, transparent: input.transparent === true, fastAttention: input.fastAttention !== false };
+  const params = { model, prompt, width, height, steps, count, seed, refs, compute, threads, transparent: input.transparent === true, fastAttention: input.fastAttention !== false };
+  if (!sdxl) return params;
+  // SDXL: classifier-free guidance, negative prompt, LoRAs from models/sdxl/loras and the wallpaper pass.
+  const negative = input.negativePrompt ?? preset.negative;
+  if (typeof negative !== 'string' || negative.length > 2000) fail('El prompt negativo admite hasta 2000 caracteres.');
+  const cfg = Number(input.cfg ?? preset.cfg);
+  if (!Number.isFinite(cfg) || cfg < 1 || cfg > 15) fail('CFG: debe estar entre 1 y 15.');
+  const sampler = input.sampler ?? preset.sampler;
+  if (!Object.hasOwn(SAMPLERS, sampler)) fail('Sampler inválido.');
+  const loras = input.loras ?? [];
+  if (!Array.isArray(loras) || loras.length > 4) fail('Puedes combinar hasta 4 LoRAs.');
+  for (const l of loras) if (!l || typeof l.file !== 'string' || !MODEL_FILE.test(l.file) || !Number.isFinite(l.weight) || l.weight < -2 || l.weight > 2) fail('LoRA inválido: nombre de archivo y peso entre -2 y 2.');
+  const hires = input.hires === true;
+  if (hires && width * height > 1216 * 1216) fail('El modo wallpaper parte de una imagen de ~1 MP (por ejemplo 1344 × 768) y la amplía ×1.5.');
+  return { ...params, transparent: false, negativePrompt: negative.trim(), cfg, sampler, loras: loras.map(l => ({ file: l.file, weight: l.weight })), hires, qualityTags: input.qualityTags !== false };
 }
 
 // Diffusers QwenImage21 flattens unpatched latents: one token per 16x16 pixels.
@@ -68,6 +83,7 @@ export function vaeTiling(width, height, engine = {}) {
 
 // engine: features of the running engine (merged transformer, convDirect, mode). Defaults to runtime LoRA.
 export function enginePayload(params, index = 0, engine = {}) {
+  if (params.model?.startsWith('sdxl:')) return sdxlPayload(params, index, engine);
   return {
     prompt: params.transparent ? `This is an RGBA image with transparency. ${params.prompt}. The image has alpha channel and the background is transparent.` : params.prompt,
     negative_prompt: '', width: params.width, height: params.height,
@@ -78,6 +94,26 @@ export function enginePayload(params, index = 0, engine = {}) {
     sample_params: { sample_method: 'euler', sample_steps: params.steps,
       custom_sigmas: turboSigmas(params.width, params.height, params.steps), guidance: { txt_cfg: 1.0 } },
     vae_tiling_params: vaeTiling(params.width, params.height, engine),
+    output_format: 'png', output_compression: 100
+  };
+}
+
+// SDXL renders at ~1 MP; the wallpaper option re-renders the latent at 1.5x (hires fix, as in sd-webui).
+export const HIRES = { upscaler: 'Latent', scale: 1.5, denoising_strength: 0.55 };
+export function outputSize(params) {
+  const k = params.hires ? HIRES.scale : 1;
+  return { width: Math.round(params.width * k), height: Math.round(params.height * k) };
+}
+export function sdxlPayload(params, index = 0, engine = {}) {
+  const preset = presetFor(params.model), sampler = SAMPLERS[params.sampler], out = outputSize(params);
+  return {
+    prompt: (params.qualityTags && preset.prefix && !params.prompt.startsWith(preset.prefix.trim()) ? preset.prefix : '') + params.prompt,
+    negative_prompt: params.negativePrompt, width: params.width, height: params.height,
+    seed: params.seed + index, batch_count: 1, embed_image_metadata: true,
+    lora: params.loras.map(l => ({ path: l.file, multiplier: l.weight, is_high_noise: false })),
+    sample_params: { sample_method: sampler.method, ...(sampler.scheduler ? { scheduler: sampler.scheduler } : {}), sample_steps: params.steps, guidance: { txt_cfg: params.cfg } },
+    hires: params.hires ? { enabled: true, ...HIRES, steps: Math.max(8, Math.round(params.steps / 2)) } : { enabled: false },
+    vae_tiling_params: vaeTiling(out.width, out.height, engine),
     output_format: 'png', output_compression: 100
   };
 }

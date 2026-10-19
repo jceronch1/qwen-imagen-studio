@@ -76,6 +76,20 @@ No necesitas instalar Python, Node.js, CUDA ni ninguna otra herramienta: el inst
 
 Cada imagen se guarda en `outputs/` junto a un JSON con todos sus parámetros. Desde la biblioteca puedes **reutilizar ajustes**, **usarla como referencia**, descargarla o eliminarla (lo eliminado va a `outputs/.trash/`).
 
+## Modelos anime SDXL (NoobAI-XL y los tuyos) · GPUs de 4–6 GB
+
+Además de Qwen-Image, el estudio genera con **cualquier checkpoint SDXL**: [NoobAI-XL 1.1](https://huggingface.co/Laxhar/noobai-XL-1.1) (anime, recomendado), Illustrious, Pony, Animagine… SDXL usa codificadores de texto CLIP (<1 B parámetros) en lugar de un LLM de 8 B, por eso cabe en tarjetas de **4–6 GB de VRAM**: los pesos esperan en la RAM y pasan a la VRAM por bloques.
+
+1. **Instala NoobAI-XL:** doble clic en **`Instalar modelo anime (NoobAI-XL).cmd`**. Instala los motores y el checkpoint (6,9 GB, verificado con el SHA256 que publica Hugging Face) **sin descargar Qwen-Image**. Si ya tienes Qwen, puedes usar ambos: `scripts\install.ps1 -Models all`.
+2. **Otros checkpoints:** copia cualquier `.safetensors` SDXL en `models\sdxl\checkpoints\`. Aparece en **00 · Modelo** con ajustes SDXL genéricos.
+3. **LoRAs de personajes o estilos:** copia los `.safetensors` (LoRAs **SDXL**: los de SD 1.5 o Flux no son compatibles) en `models\sdxl\loras\` y recarga la página. Márcalos en **02 · LoRAs** y ajusta el peso (0,6–1,0 suele ir bien). Puedes combinar hasta 4. Muchos LoRAs necesitan su *trigger word* en el prompt: está en la ficha del LoRA.
+4. **Escribe con tags** estilo Danbooru: `1girl, solo, frieren, sousou no frieren, white hair, elf, scenery, sunset`. NoobAI se entrenó con Danbooru y reconoce por su tag a muchos personajes populares **sin LoRA**: pruébalo antes de buscar uno. «Etiquetas de calidad» antepone `masterpiece, best quality, newest, absurdres, highres, safe`.
+5. **Wallpapers:** elige 16:9 (1344 × 768) y activa **Modo wallpaper**: una segunda pasada (*hires fix*) amplía el latente ×1.5 y vuelve a detallarlo → 2016 × 1152. Para 9:16 de móvil usa 768 × 1344.
+
+Ajustes recomendados (se cargan al elegir el modelo; **Restaurar recomendados** los repone): 28 pasos, CFG 5, Euler a. CFG mide cuánto se fuerza el prompt frente a la predicción sin prompt: muy alto quema colores, muy bajo ignora tags. El prompt negativo indica lo que se quiere evitar.
+
+> Respeta la licencia de cada modelo y LoRA (NoobAI-XL usa la *Fair AI Public License 1.0-SD*). Los personajes tienen derechos de autor: úsalo para fan art personal.
+
 ## CPU, GPU o ambas
 
 En **05 · Equipo de generación → Procesamiento**:
@@ -87,7 +101,7 @@ En **05 · Equipo de generación → Procesamiento**:
 | **CPU + GPU** | GPU integrada (por ejemplo Radeon 780M) o con poca VRAM: el texto se procesa en la CPU y la imagen en la GPU. |
 | **CPU** | Equipos sin GPU. Funciona, pero tarda minutos por imagen: empieza con 512 × 512. |
 
-**Atención rápida** (activada por defecto, solo NVIDIA) usa SageAttention: un 12 % más rápido con la misma composición y calidad; los detalles finos pueden variar ligeramente. Desactívala si quieres reproducir exactamente imágenes creadas sin ella.
+**Atención rápida** (activada por defecto, solo NVIDIA **RTX 30 o posterior**, con Qwen-Image) usa SageAttention: un 12 % más rápido con la misma composición y calidad; los detalles finos pueden variar ligeramente. Desactívala si quieres reproducir exactamente imágenes creadas sin ella.
 
 ## Rendimiento de referencia
 
@@ -111,6 +125,9 @@ Los detalles de cada optimización y cómo se midieron están en [docs/TECNICO.m
 | «Falta …. Ejecuta Instalar Qwen Imagen Studio.cmd» al iniciar | La instalación no terminó; ejecuta de nuevo el instalador. |
 | «La GPU no tuvo memoria suficiente» | Usa un tamaño menor, el modo **CPU + GPU** o **CPU**, y cierra otros programas que usen la GPU. |
 | «No quedó suficiente memoria RAM» | Cierra aplicaciones pesadas o reduce el tamaño de la imagen. |
+| El motor no inicia con una GTX 10xx/16xx o RTX 20xx | Actualiza la app: SageAttention requiere RTX 30+ y ahora solo se activa en esas GPUs. |
+| Con SDXL la GPU se queda sin memoria (4 GB) | Desactiva el modo wallpaper, usa 1024 × 1024 o menos, o el modo **CPU + GPU**. |
+| No aparece mi checkpoint o LoRA | Debe ser `.safetensors` o `.gguf`, sin caracteres especiales en el nombre, en `models\sdxl\checkpoints` o `models\sdxl\loras`. Recarga la página. |
 | No aparece mi GPU | Actualiza el controlador (NVIDIA, AMD o Intel) y vuelve a abrir la app. |
 | El puerto 7871 está ocupado | Cierra la otra instancia con `Detener Qwen Imagen Studio.cmd`. |
 
@@ -130,6 +147,7 @@ docs/                 Documentación técnica y capturas
 qa/optimizacion/      Mediciones usadas para elegir la configuración del motor
 models/               Licencia y aviso de los modelos (los pesos los descarga el instalador)
 model-config.json     Versiones, revisiones y hashes fijados de los modelos
+sdxl-models.json      Catálogo SDXL: NoobAI-XL y ajustes recomendados por checkpoint
 *.cmd                 Instalar, iniciar y detener con doble clic
 ```
 

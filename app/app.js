@@ -1,23 +1,75 @@
 'use strict';
 const $ = s => document.querySelector(s);
-const state = { refs: [], gallery: [], selected: null, job: null, ready: false, polling: false, deleting: false, checked: new Set(), hardware: null };
+const state = { refs: [], gallery: [], selected: null, job: null, ready: false, polling: false, deleting: false, checked: new Set(), hardware: null, models: [], loras: [], catalog: null, lorasOn: new Map() };
+const preset = () => state.models.find(m => m.id === $('#model').value) || { id: 'qwen', family: 'qwen', steps: 6, refs: true };
+const isSdxl = () => preset().family === 'sdxl';
 async function api(path, options = {}) {
   const r = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
   const data = await r.json(); if (!r.ok) throw new Error(data.error || `Error ${r.status}`); return data;
 }
 function notice(message, error = false) { $('#notice').hidden = false; $('#notice').textContent = message; $('#notice').classList.toggle('error', error); }
-function settings() { return { prompt: $('#prompt').value, width: +$('#width').value, height: +$('#height').value, steps: +$('#steps').value, count: +$('#count').value, seed: +$('#seed').value, compute: $('#compute').value, threads: +$('#threads').value, transparent: $('#transparent').checked, fastAttention: $('#fastAttention').checked }; }
+function settings() {
+  const s = { model: $('#model').value, prompt: $('#prompt').value, width: +$('#width').value, height: +$('#height').value, steps: +$('#steps').value, count: +$('#count').value, seed: +$('#seed').value, compute: $('#compute').value, threads: +$('#threads').value, transparent: $('#transparent').checked, fastAttention: $('#fastAttention').checked };
+  if (!isSdxl()) return s;
+  return { ...s, transparent: false, negativePrompt: $('#negativePrompt').value, cfg: +$('#cfg').value, sampler: $('#sampler').value, qualityTags: $('#qualityTags').checked, hires: $('#hires').checked, loras: [...state.lorasOn].map(([file, weight]) => ({ file, weight })) };
+}
+// Loads the recommended settings of the selected model; the prompt and the size are kept.
+function applyPreset(p = preset()) {
+  $('#steps').value = p.steps;
+  if (p.family === 'sdxl') { $('#cfg').value = p.cfg; $('#sampler').value = p.sampler; $('#negativePrompt').value = p.negative; }
+}
+function renderModel() {
+  const p = preset(), sdxl = p.family === 'sdxl';
+  document.body.classList.toggle('family-sdxl', sdxl);
+  $('#modelFamily').textContent = sdxl ? 'SDXL' : 'Qwen-Image';
+  const downloads = state.catalog?.downloads?.length ? ' Disponible para descargar: ' + state.catalog.downloads.map(d => d.label + ' (' + d.sizeGB + ' GB)').join(', ') + ' — ejecuta «Instalar modelo anime (NoobAI-XL).cmd».' : '';
+  $('#modelHint').textContent = sdxl
+    ? (p.source ? 'Fuente: huggingface.co/' + p.source + '. ' : 'Checkpoint propio en ' + (state.catalog?.checkpointDir || 'models/sdxl/checkpoints') + '. ') + (p.license ? 'Licencia: ' + p.license + '. ' : '') + 'Sin referencias; admite LoRAs y prompt negativo.' + downloads
+    : 'Texto e instrucciones de edición en lenguaje natural, hasta 2 referencias. Necesita unos 8 GB de VRAM.' + (state.catalog ? ' Para GPUs de 4–6 GB usa un modelo SDXL.' + downloads : '');
+  $('#promptHint').textContent = sdxl ? 'Escribe tags estilo Danbooru separados por comas: personaje, serie, ropa, pose, fondo.' : 'También puedes escribir instrucciones de edición.';
+  $('#prefixHint').textContent = p.prefix ? 'Antepone: ' + p.prefix.trim() : 'Este modelo no define etiquetas de calidad';
+  $('#qualityTags').closest('label').hidden = !p.prefix;
+  $('#prompt').placeholder = sdxl ? '1girl, solo, silver hair, red eyes, witch hat, night sky, aurora, scenery…' : 'Un invernadero de cristal entre nubes, plantas tropicales, luz de la mañana…';
+  if (sdxl && state.refs.length) { state.refs = []; renderRefs(); }
+}
+function renderLoras() {
+  $('#loras').replaceChildren();
+  for (const l of state.loras) {
+    const row = document.createElement('label'); row.className = 'lora-row'; row.classList.toggle('on', state.lorasOn.has(l.file));
+    const box = document.createElement('input'); box.type = 'checkbox'; box.checked = state.lorasOn.has(l.file); box.setAttribute('aria-label', 'Usar LoRA ' + l.name);
+    const name = document.createElement('span'); name.textContent = l.name; name.title = l.file;
+    const weight = document.createElement('input'); weight.type = 'number'; weight.min = -2; weight.max = 2; weight.step = 0.05; weight.value = state.lorasOn.get(l.file) ?? 0.8; weight.setAttribute('aria-label', 'Peso de ' + l.name); weight.dataset.number = '';
+    const sync = () => { if (box.checked) state.lorasOn.set(l.file, Math.max(-2, Math.min(2, +weight.value || 0))); else state.lorasOn.delete(l.file); row.classList.toggle('on', box.checked); $('#loraCount').textContent = state.lorasOn.size + ' activos'; persist(); };
+    box.onchange = sync; weight.oninput = () => { if (box.checked) sync(); };
+    row.append(box, name, weight); $('#loras').append(row);
+  }
+  $('#loraCount').textContent = state.lorasOn.size + ' activos';
+  $('#loraHint').hidden = false;
+}
+async function loadModels() {
+  try {
+    const data = await api('/api/models'); state.catalog = data; state.models = data.models; state.loras = data.loras;
+    for (const file of [...state.lorasOn.keys()]) if (!state.loras.some(l => l.file === file)) state.lorasOn.delete(file);
+    const wanted = savedModel || $('#model').value;
+    $('#model').replaceChildren(...state.models.map(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = m.label; return o; }));
+    if (!state.models.length) { const o = document.createElement('option'); o.value = 'qwen'; o.textContent = 'Ningún modelo instalado'; $('#model').append(o); }
+    $('#model').value = state.models.some(m => m.id === wanted) ? wanted : (state.models[0]?.id || 'qwen');
+    if (!savedSettings || savedSettings.model !== $('#model').value) applyPreset();
+    renderLoras(); renderModel(); refreshForm();
+  } catch (e) { $('#modelHint').textContent = 'No se pudo leer la lista de modelos: ' + e.message; }
+}
+$('#model').onchange = () => { applyPreset(); renderModel(); refreshForm(); };
 // Loads the models for the selected device while the prompt is written, so the first image starts at once.
 let warmTimer = null, warmedKey = null, pendingKey = null;
 function warmEngine() {
-  const s = settings(), key = JSON.stringify([s.compute, s.threads, s.fastAttention]);
-  if (state.job || !state.hardware || key === warmedKey || key === pendingKey || !Number.isInteger(s.threads) || s.threads < 0 || s.threads > 128) return;
+  const s = settings(), key = JSON.stringify([s.model, s.compute, s.threads, s.fastAttention]);
+  if (state.job || !state.hardware || !state.models.length || key === warmedKey || key === pendingKey || !Number.isInteger(s.threads) || s.threads < 0 || s.threads > 128) return;
   clearTimeout(warmTimer); pendingKey = key;
   warmTimer = setTimeout(() => {
     pendingKey = null;
-    if (state.job || JSON.stringify([$('#compute').value, +$('#threads').value, $('#fastAttention').checked]) !== key) return;
+    if (state.job || JSON.stringify([$('#model').value, $('#compute').value, +$('#threads').value, $('#fastAttention').checked]) !== key) return;
     warmedKey = key;
-    api('/api/engine/warmup', { method: 'POST', body: JSON.stringify({ compute: s.compute, threads: s.threads, fastAttention: s.fastAttention }) }).catch(() => { warmedKey = null; });
+    api('/api/engine/warmup', { method: 'POST', body: JSON.stringify({ model: s.model, compute: s.compute, threads: s.threads, fastAttention: s.fastAttention }) }).catch(() => { warmedKey = null; });
   }, 700);
 }
 function persist() { try { localStorage.setItem('turbo.settings', JSON.stringify(settings())); } catch {} }
@@ -25,15 +77,26 @@ function refreshForm() {
   const s = settings(); $('#chars').textContent = `${s.prompt.length}/6000`;
   $('#canvasSize').textContent = `${s.width} × ${s.height}`; $('#megapixels').textContent = `${(s.width*s.height/1e6).toFixed(2)} MP`;
   document.querySelectorAll('.preset').forEach(b => b.classList.toggle('active', +b.dataset.w === s.width && +b.dataset.h === s.height));
-  $('#stepsHint').textContent = s.steps === 6 ? '6 pasos · configuración recomendada para Viggle v0.2.1.' : 'Modo experimental: usa 6 pasos para v0.2.1. Se conservan los nodos de entrenamiento al añadir pasos; menos de 4 no está recomendado.';
+  const p = preset();
+  $('#stepsHint').textContent = isSdxl() ? (s.steps === p.steps ? s.steps + ' pasos · recomendado para este modelo. CFG ' + p.cfg + ', ' + $('#sampler').selectedOptions[0]?.textContent + '.' : 'Recomendado: ' + p.steps + ' pasos (20–35). Menos pasos es más rápido pero con menos detalle.') : s.steps === 6 ? '6 pasos · configuración recomendada para Viggle v0.2.1.' : 'Modo experimental: usa 6 pasos para v0.2.1. Se conservan los nodos de entrenamiento al añadir pasos; menos de 4 no está recomendado.';
   $('#generate').disabled = !!state.job || !state.ready;
-  $('#compute').disabled=!!state.job;$('#fastAttention').disabled=!!state.job;
+  $('#compute').disabled=!!state.job;$('#fastAttention').disabled=!!state.job;$('#model').disabled=!!state.job;
+  if(isSdxl()&&s.hires){const w=Math.round(s.width*1.5),h=Math.round(s.height*1.5);$('#canvasSize').textContent=`${s.width} × ${s.height} → ${w} × ${h}`;$('#megapixels').textContent=`${(w*h/1e6).toFixed(2)} MP`;}
   $('#computeHint').textContent={auto:'Automático usa GPU con una tarjeta dedicada, CPU + GPU con una GPU integrada y CPU si no hay GPU compatible.',cpu:'Todo el cálculo se realiza en CPU. Puede tardar varios minutos o más. Empieza con 512 × 512 y 6 pasos. 0 hilos = automático.',gpu:'Todo el cálculo se realiza en la GPU. Los pesos esperan en RAM y cada modelo pasa a la VRAM cuando se necesita.',hybrid:'La CPU interpreta el texto y las referencias; la GPU genera y decodifica la imagen. Para GPU integrada o con poca VRAM; con una GPU dedicada de 8 GB, GPU es algo más rápido.'}[$('#compute').value]+' Al cambiar el modo, los modelos se cargan de nuevo en segundo plano.';
   syncSelection();
   document.querySelectorAll('.gallery-delete, #deleteAll, #delete').forEach(b=>b.disabled=!!state.job||state.deleting||!state.gallery.length);
   persist(); warmEngine();
 }
-function setSettings(s) { for (const key of ['prompt','width','height','steps','count','seed','compute','threads']) if (s[key] !== undefined) $(`#${key}`).value = s[key]; $('#transparent').checked = s.transparent === true; if (typeof s.fastAttention === 'boolean') $('#fastAttention').checked = s.fastAttention; refreshForm(); }
+function setSettings(s) {
+  // Library records of Qwen store the Hugging Face source in "model"; SDXL records keep the app id.
+  const model = s.family === 'sdxl' || String(s.model || '').startsWith('sdxl:') ? s.model : 'qwen';
+  if (s.model !== undefined && [...$('#model').options].some(o => o.value === model)) $('#model').value = model;
+  for (const key of ['prompt','width','height','steps','count','seed','compute','threads','cfg','sampler','negativePrompt']) if (s[key] !== undefined) $(`#${key}`).value = s[key];
+  $('#transparent').checked = s.transparent === true; $('#hires').checked = s.hires === true; $('#qualityTags').checked = s.qualityTags !== false;
+  if (typeof s.fastAttention === 'boolean') $('#fastAttention').checked = s.fastAttention;
+  if (Array.isArray(s.loras)) { state.lorasOn = new Map(s.loras.map(l => [l.file, l.weight])); if (state.loras.length) renderLoras(); }
+  renderModel(); refreshForm();
+}
 function renderRefs() {
   $('#refs').replaceChildren(); $('#refCount').textContent = `${state.refs.length} / 2`; $('#refHint').hidden = !state.refs.length; $('#addSecond').hidden = state.refs.length !== 1;
   state.refs.forEach((src,i) => {
@@ -70,15 +133,15 @@ document.querySelectorAll('.preset').forEach(b=>b.onclick=()=>{ $('#width').valu
 $('#swap').onclick=()=>{const w=$('#width').value;$('#width').value=$('#height').value;$('#height').value=w;refreshForm();};
 $('#form').addEventListener('input',e=>{if(!e.target.matches('[data-number]'))refreshForm();});
 $('#random').onclick=()=>{$('#seed').value=crypto.getRandomValues(new Uint32Array(1))[0]%2147483640;refreshForm();};
-$('#recommended').onclick=()=>{$('#steps').value=6;refreshForm();};
+$('#recommended').onclick=()=>{applyPreset();refreshForm();};
 const ideas = ['An elegant ceramic teapot shaped like a tiny house, lavender glaze, soft morning sunlight, minimalist product photography, warm cream background.', 'Un jardín botánico dentro de una estación espacial, helechos gigantes, ventanas hacia Saturno, fotografía cinematográfica, luz dorada.', 'An editorial photograph of a red fox in a snowy forest at sunrise, soft mist, detailed fur, warm backlight, natural colors.','Un cartel tipográfico que dice "IMAGINA", formas de papel tridimensionales en tonos lavanda y coral, composición editorial limpia.'];
-let ideaIndex=0;$('#inspire').onclick=()=>{$('#prompt').value=ideas[ideaIndex++%ideas.length];refreshForm();};
+let ideaIndex=0;$('#inspire').onclick=()=>{const list=isSdxl()&&preset().ideas?.length?preset().ideas:isSdxl()?['1girl, solo, long hair, school uniform, cherry blossoms, wind, looking back, sunset, scenery']:ideas;$('#prompt').value=list[ideaIndex++%list.length];refreshForm();};
 $('#theme').onclick=()=>{document.body.classList.toggle('dark');try{localStorage.setItem('turbo.theme',document.body.classList.contains('dark')?'dark':'light');}catch{}};
 function selectImage(item) {
   state.selected=item; $('#result').src=item.src;$('#result').hidden=false;$('#empty').hidden=true;$('#resultInfo').hidden=false;
   $('#resultTitle').textContent=item.prompt.length>85?item.prompt.slice(0,85)+'…':item.prompt;
-  $('#resultMeta').textContent=`${item.width} × ${item.height} · ${item.steps} pasos · Semilla ${item.seed} · ${item.refsCount||0} referencias · v${item.modelVersion||'0.1'}${item.computeUsed?' · '+({cpu:'CPU',gpu:'GPU',hybrid:'CPU + GPU',external:'Motor externo'}[item.computeUsed]||item.computeUsed):''}${item.loraApplication==='merged'?' · LoRA fusionado':''}${item.seconds?' · '+item.seconds+' s':''}`;
-  $('#download').href=item.src;$('#download').download=`qwen-imagen-${item.seed}.png`;
+  $('#resultMeta').textContent=`${item.modelLabel?item.modelLabel+' · ':''}${item.outputWidth||item.width} × ${item.outputHeight||item.height} · ${item.steps} pasos${item.cfg&&item.family==='sdxl'?' · CFG '+item.cfg:''}${item.loras?.length?' · '+item.loras.length+' LoRA':''} · Semilla ${item.seed} · ${item.refsCount||0} referencias ${item.family==='sdxl'?'':' · v'+(item.modelVersion||'0.1')}${item.computeUsed?' · '+({cpu:'CPU',gpu:'GPU',hybrid:'CPU + GPU',external:'Motor externo'}[item.computeUsed]||item.computeUsed):''}${item.loraApplication==='merged'?' · LoRA fusionado':''}${item.seconds?' · '+item.seconds+' s':''}`;
+  $('#download').href=item.src;$('#download').download=`${item.family==='sdxl'?'sdxl':'qwen'}-imagen-${item.seed}.png`;
   $('#metadata').href=`/outputs/${item.id}.json`;$('#metadata').download=`qwen-imagen-${item.seed}.json`;
   document.querySelectorAll('.thumb').forEach(b=>b.classList.toggle('selected',b.dataset.id===item.id));
 }
@@ -88,7 +151,7 @@ async function loadGallery(selectLatest=false) {
     const card=document.createElement('article');card.className='gallery-card';
     const b=document.createElement('button');b.className='thumb';b.dataset.id=item.id;b.title=item.prompt;
     const img=document.createElement('img');img.src=item.src;img.alt=item.prompt;img.loading='lazy';
-    const div=document.createElement('div');div.textContent=item.width+' × '+item.height;
+    const div=document.createElement('div');div.textContent=(item.outputWidth||item.width)+' × '+(item.outputHeight||item.height);
     const meta=document.createElement('span');meta.textContent=item.steps+' pasos · '+item.seed;div.append(meta);b.append(img,div);b.onclick=()=>selectImage(item);
     const remove=document.createElement('button');remove.className='gallery-delete';remove.textContent='Eliminar';remove.setAttribute('aria-label','Eliminar imagen con semilla '+item.seed);remove.onclick=()=>deleteImages(item);
     const label=document.createElement('label');label.className='image-selection';
@@ -137,12 +200,12 @@ $('#cancel').onclick=async()=>{if(!state.job)return;try{const job=await api(`/ap
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();if(state.ready&&!state.job)$('#form').requestSubmit();}});
 async function status() {let loading=false;try{const s=await api('/api/status');state.ready=s.ready;loading=!!s.compute?.loading;
 if(s.compute?.hardware){const h=s.compute.hardware,first=!state.hardware;state.hardware=h;$('#hardwareInfo').textContent=h.cpuName+' · '+h.logicalCores+' hilos · '+h.ramGB+' GB RAM. '+(h.gpus.length?'GPU: '+h.gpus.map(g=>g.name+(g.integrated?' (integrada)':'')).join(', '):'Sin GPU compatible detectada. Puedes generar con CPU.');for(const o of $('#compute').options)o.disabled=!h.modes.includes(o.value);
-$('#fastAttention').closest('label').hidden=!h.gpus.some(g=>/^cuda/i.test(g.id));
-$('#engineInfo').textContent='Viggle Turbo v0.2.1 · modelo base Q4_K + LoRA r256 '+(h.merged?'fusionado en los pesos (más rápido y con menos VRAM).':'aplicado en tiempo de ejecución. Ejecuta el instalador para fusionarlo y acelerar la generación.')+' Euler con el planificador Turbo, CFG 1 y sin prompt negativo, como requiere este modelo.';
+$('#fastAttention').closest('label').hidden=!h.sage||isSdxl();
+$('#engineInfo').textContent=isSdxl()?'SDXL con stable-diffusion.cpp: los pesos esperan en RAM y pasan a la VRAM por bloques, así funciona en GPUs de 4–6 GB. CFG y prompt negativo activos; los LoRAs se aplican en cada imagen.':'Viggle Turbo v0.2.1 · modelo base Q4_K + LoRA r256 '+(h.merged?'fusionado en los pesos (más rápido y con menos VRAM).':'aplicado en tiempo de ejecución. Ejecuta el instalador para fusionarlo y acelerar la generación.')+' Euler con el planificador Turbo, CFG 1 y sin prompt negativo, como requiere este modelo.';
 if(first)warmEngine();}
-const current=s.compute?.current;$('#status').classList.toggle('ready',s.ready&&!loading);$('#status').lastChild.textContent=s.ready?(loading?' Cargando modelos…':current?' Motor listo · '+({cpu:'CPU',gpu:'GPU',hybrid:'CPU + GPU'}[current.mode]):' Listo para generar'):' Detectando / desconectado';if(s.active&&!state.job){showJob(s.active);void followJob(s.active.id);}}catch{state.ready=false;$('#status').classList.remove('ready');$('#status').lastChild.textContent=' Servidor desconectado';}refreshForm();setTimeout(status,loading?1500:5000);}
+const current=s.compute?.current;$('#status').classList.toggle('ready',s.ready&&!loading);$('#status').lastChild.textContent=s.ready?(loading?' Cargando modelos…':current?' Motor listo · '+({cpu:'CPU',gpu:'GPU',hybrid:'CPU + GPU'}[current.mode])+(s.currentModel?' · '+s.currentModel.split(' · ')[0]:''):' Listo para generar'):' Detectando / desconectado';if(s.active&&!state.job){showJob(s.active);void followJob(s.active.id);}}catch{state.ready=false;$('#status').classList.remove('ready');$('#status').lastChild.textContent=' Servidor desconectado';}refreshForm();setTimeout(status,loading?1500:5000);}
 
-const numberPresets={width:[512,768,1024,1152,1344,1536,2048],height:[512,768,864,1024,1152,1344,1536,2048],steps:[4,5,6,7,8,12,20,30,40],threads:[0,2,4,8,12,16,24,32],seed:[-1,0,42,12345,424242]};
+const numberPresets={width:[512,768,1024,1152,1344,1536,2048],height:[512,768,864,1024,1152,1344,1536,2048],steps:[4,6,8,12,20,24,28,32,40],threads:[0,2,4,8,12,16,24,32],seed:[-1,0,42,12345,424242]};
 const numberLabels={width:'Ancho',height:'Alto',steps:'Pasos',seed:'Semilla',threads:'Hilos de CPU'};
 function closeNumberMenus(){document.querySelectorAll('.number-options').forEach(menu=>menu.hidden=true);document.querySelectorAll('.number-combo input').forEach(input=>input.setAttribute('aria-expanded','false'));}
 for(const [key,values] of Object.entries(numberPresets)){
@@ -160,6 +223,7 @@ for(const [key,values] of Object.entries(numberPresets)){
 }
 document.addEventListener('click',e=>{if(!e.target.closest('.number-combo'))closeNumberMenus();});
 
-try{if(localStorage.getItem('turbo.theme')==='dark')document.body.classList.add('dark');const saved=JSON.parse(localStorage.getItem('turbo.settings')||'null');if(saved)setSettings(saved);}catch{}
+let savedSettings=null,savedModel=null;
+try{if(localStorage.getItem('turbo.theme')==='dark')document.body.classList.add('dark');savedSettings=JSON.parse(localStorage.getItem('turbo.settings')||'null');savedModel=savedSettings?.model||null;if(savedSettings){const {model,...rest}=savedSettings;setSettings(rest);}}catch{}
 try{if(localStorage.getItem('turbo.modelVersion')!=='0.2.1'){$('#steps').value=6;localStorage.setItem('turbo.modelVersion','0.2.1');}}catch{}
-refreshForm();loadGallery().catch(e=>notice(e.message,true));status();
+refreshForm();loadModels().then(()=>{if(savedSettings?.model===$('#model').value)setSettings(savedSettings);});loadGallery().catch(e=>notice(e.message,true));status();

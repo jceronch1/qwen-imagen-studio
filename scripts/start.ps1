@@ -19,9 +19,12 @@ $Config = Get-Content -LiteralPath (Join-Path $ProjectRoot 'model-config.json') 
 $Proof = Join-Path $ProjectRoot 'models\merged-lora.json'
 $Merged = (Test-Path -LiteralPath $Proof) -and (Test-Path -LiteralPath (Join-Path $ProjectRoot ('models\' + $Config.merged))) -and ((Get-Content -LiteralPath $Proof -Raw | ConvertFrom-Json).output -eq $Config.merged)
 [string[]]$Transformer = if ($Merged) { @('models\' + $Config.merged) } else { @(('models\' + $Config.base),('models\loras\' + $Config.runtimeLora)) }
-foreach($relative in @($Transformer + @('models\Qwen3VL-8B-Instruct-Q4_K_M.gguf','models\mmproj-Qwen3VL-8B-Instruct-F16.gguf','models\qwen_image_2.1_vae_bf16.safetensors'))) {
-    if(!(Test-Path -LiteralPath (Join-Path $ProjectRoot $relative))) { throw "Falta $relative. Ejecuta 'Instalar Qwen Imagen Studio.cmd'." }
-}
+$QwenFiles = @($Transformer + @('models\Qwen3VL-8B-Instruct-Q4_K_M.gguf','models\mmproj-Qwen3VL-8B-Instruct-F16.gguf','models\qwen_image_2.1_vae_bf16.safetensors'))
+$MissingQwen = @($QwenFiles | Where-Object { !(Test-Path -LiteralPath (Join-Path $ProjectRoot $_)) })
+# SDXL checkpoints (NoobAI-XL or your own) are enough to start without Qwen-Image.
+$SdxlDir = Join-Path $ProjectRoot ((Get-Content -LiteralPath (Join-Path $ProjectRoot 'sdxl-models.json') -Raw | ConvertFrom-Json).checkpointDir)
+$HasSdxl = (Test-Path -LiteralPath $SdxlDir) -and @(Get-ChildItem -LiteralPath $SdxlDir -File | Where-Object { $_.Extension -in '.safetensors','.gguf' }).Count -gt 0
+if ($MissingQwen.Count -and !$HasSdxl) { throw "Falta $($MissingQwen[0]). Ejecuta 'Instalar Qwen Imagen Studio.cmd' o 'Instalar modelo anime (NoobAI-XL).cmd'." }
 $cpu = Join-Path $ProjectRoot ($Config.runtimeCpu + '\sd-server.exe')
 if(!(Test-Path -LiteralPath $cpu)){throw 'Falta el motor CPU. Ejecuta "Instalar Qwen Imagen Studio.cmd".'}
 # Remove only a recorded engine from this project left by an interrupted gateway.

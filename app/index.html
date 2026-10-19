@@ -6,23 +6,32 @@
 <aside class="controls">
 <div class="eyebrow">TU ESTUDIO GENERATIVO</div><h1>Una idea.<br><em>Infinitas imágenes.</em></h1><p class="intro">De tu imaginación al lienzo, en local.</p>
 <form id="form">
+<div class="section-title"><label for="model">00 <b>Modelo</b></label><span id="modelFamily">Qwen-Image</span></div>
+<select id="model" class="model-select"><option value="qwen">Qwen-Image 2.1 · Viggle Turbo</option></select>
+<p id="modelHint" class="hint">Detectando los modelos instalados…</p>
 <div class="section-title"><label for="prompt">01 <b>Describe tu imagen</b></label><button type="button" id="inspire" class="text-button">Dame una idea ↗</button></div>
 <textarea id="prompt" maxlength="6000" required placeholder="Un invernadero de cristal entre nubes, plantas tropicales, luz de la mañana…"></textarea>
-<div class="prompt-foot"><span>También puedes escribir instrucciones de edición.</span><span id="chars">0/6000</span></div>
-<div class="section-title"><span>02 <b>Imágenes de referencia</b></span><span id="refCount">0 / 2</span></div>
+<div class="prompt-foot"><span id="promptHint">También puedes escribir instrucciones de edición.</span><span id="chars">0/6000</span></div>
+<div class="sdxl-only"><label class="toggle-row"><span>Etiquetas de calidad <small id="prefixHint">Antepone las etiquetas recomendadas por el modelo</small></span><input id="qualityTags" type="checkbox" role="switch" checked></label>
+<label class="negative-label" for="negativePrompt">Prompt negativo <span>Lo que NO quieres ver</span></label><textarea id="negativePrompt" class="negative" maxlength="2000"></textarea></div>
+<div class="qwen-only"><div class="section-title"><span>02 <b>Imágenes de referencia</b></span><span id="refCount">0 / 2</span></div>
 <label id="dropzone" class="dropzone" for="files"><span class="upload-icon">↥</span><strong>Añade hasta 2 imágenes o arrástralas aquí</strong><small>PNG, JPG o WebP · hasta 8 MB cada una</small><input id="files" type="file" accept="image/png,image/jpeg,image/webp" multiple></label>
-<div id="refs" class="refs"></div><button type="button" id="addSecond" class="secondary" hidden>＋ Añadir segunda referencia</button><p id="refHint" class="hint" hidden>El orden importa: menciona «imagen 1» o «imagen 2» en tu instrucción. Usa las flechas para reordenar.</p>
+<div id="refs" class="refs"></div><button type="button" id="addSecond" class="secondary" hidden>＋ Añadir segunda referencia</button><p id="refHint" class="hint" hidden>El orden importa: menciona «imagen 1» o «imagen 2» en tu instrucción. Usa las flechas para reordenar.</p></div>
+<div class="sdxl-only"><div class="section-title"><span>02 <b>LoRAs</b> <small class="muted">personajes y estilos</small></span><span id="loraCount">0 activos</span></div>
+<div id="loras" class="loras"></div><p id="loraHint" class="hint">Copia archivos .safetensors de LoRAs SDXL en models\sdxl\loras y recarga la página. Peso típico: 0.6–1.0.</p></div>
 <div class="section-title"><span>03 <b>Formato y tamaño</b></span><span id="megapixels">1.05 MP</span></div>
 <div class="presets" role="group" aria-label="Formatos de imagen">
 <button type="button" class="preset active" data-w="1024" data-h="1024"><i style="aspect-ratio:1"></i>1:1</button><button type="button" class="preset" data-w="1344" data-h="768"><i style="aspect-ratio:1.75"></i>16:9 aprox.</button><button type="button" class="preset" data-w="768" data-h="1344"><i style="aspect-ratio:.57"></i>9:16 aprox.</button><button type="button" class="preset" data-w="1152" data-h="864"><i style="aspect-ratio:1.33"></i>4:3</button><button type="button" class="preset" data-w="512" data-h="512"><i style="aspect-ratio:1"></i>Prueba</button>
 </div>
 <div class="dimensions"><label>Ancho <div class="unit"><input id="width" type="number" min="256" max="2048" step="32" value="1024" required><span>px</span></div></label><button type="button" id="swap" class="icon" aria-label="Intercambiar ancho y alto">⇄</button><label>Alto <div class="unit"><input id="height" type="number" min="256" max="2048" step="32" value="1024" required><span>px</span></div></label></div>
 <p class="hint">De 256 a 2048 px, en múltiplos de 32. 512 px para probar; 1024 px para crear.</p>
-<div class="section-title"><span>04 <b>Control creativo</b></span><button type="button" id="recommended" class="text-button">Restaurar Turbo</button></div>
-<div class="two-col"><label>Pasos <input id="steps" aria-label="Pasos" type="number" min="1" max="40" value="6" required></label><label>Imágenes por lote<select id="count"><option value="1">1 imagen</option><option value="2">2 imágenes</option><option value="3">3 imágenes</option><option value="4">4 imágenes</option><option value="5">5 imágenes</option><option value="6">6 imágenes</option><option value="7">7 imágenes</option><option value="8">8 imágenes</option></select></label></div>
+<label class="toggle-row sdxl-only"><span>Modo wallpaper <small>Segunda pasada ×1.5 (hires fix): 1344 × 768 → 2016 × 1152. Tarda ~2.5 veces más</small></span><input id="hires" type="checkbox" role="switch"></label>
+<div class="section-title"><span>04 <b>Control creativo</b></span><button type="button" id="recommended" class="text-button">Restaurar recomendados</button></div>
+<div class="two-col"><label>Pasos <input id="steps" aria-label="Pasos" type="number" min="1" max="60" value="6" required></label><label>Imágenes por lote<select id="count"><option value="1">1 imagen</option><option value="2">2 imágenes</option><option value="3">3 imágenes</option><option value="4">4 imágenes</option><option value="5">5 imágenes</option><option value="6">6 imágenes</option><option value="7">7 imágenes</option><option value="8">8 imágenes</option></select></label></div>
+<div class="two-col sdxl-only"><label>CFG (fidelidad al prompt)<input id="cfg" type="number" min="1" max="15" step="0.5" value="5" required></label><label>Sampler<select id="sampler"><option value="euler_a">Euler a</option><option value="dpm++2m_karras">DPM++ 2M Karras</option><option value="euler">Euler</option><option value="dpm++2s_a">DPM++ 2S a</option></select></label></div>
 <p id="stepsHint" class="hint accent">6 pasos · configuración recomendada para Viggle v0.2.1.</p>
 <label class="seed-label" for="seed">Semilla <span>−1 = aleatoria</span></label><div class="seed-row"><input id="seed" type="number" min="-1" max="2147483647" step="1" value="-1" required><button id="random" type="button" class="icon" aria-label="Elegir semilla aleatoria">⚄</button></div>
-<label class="toggle-row"><span>Fondo transparente <small>Solicitar salida RGBA mediante el prompt</small></span><input id="transparent" type="checkbox" role="switch"></label>
+<label class="toggle-row qwen-only"><span>Fondo transparente <small>Solicitar salida RGBA mediante el prompt</small></span><input id="transparent" type="checkbox" role="switch"></label>
 <div class="section-title"><span>05 <b>Equipo de generación</b></span></div>
 <div class="two-col"><label>Procesamiento<select id="compute"><option value="auto">Automático</option><option value="cpu">CPU · sin GPU</option><option value="gpu">GPU</option><option value="hybrid">CPU + GPU</option></select></label><label>Hilos de CPU<input id="threads" type="number" min="0" max="128" step="1" value="0" required></label></div>
 <p id="hardwareInfo" class="hint" aria-live="polite">Detectando los dispositivos compatibles…</p><p id="computeHint" class="hint">Automático usa una GPU compatible si está disponible; en otro caso utiliza CPU.</p>

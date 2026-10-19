@@ -6,6 +6,7 @@
 !/README.md
 !/LICENSE
 !/model-config.json
+!/sdxl-models.json
 !/*.cmd
 !/app/
 !/scripts/
