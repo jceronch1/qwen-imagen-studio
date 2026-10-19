@@ -137,7 +137,8 @@ $('#form').addEventListener('input',e=>{if(!e.target.matches('[data-number]'))re
 $('#random').onclick=()=>{$('#seed').value=crypto.getRandomValues(new Uint32Array(1))[0]%2147483640;refreshForm();};
 $('#recommended').onclick=()=>{applyPreset();refreshForm();};
 const ideas = ['An elegant ceramic teapot shaped like a tiny house, lavender glaze, soft morning sunlight, minimalist product photography, warm cream background.', 'Un jardín botánico dentro de una estación espacial, helechos gigantes, ventanas hacia Saturno, fotografía cinematográfica, luz dorada.', 'An editorial photograph of a red fox in a snowy forest at sunrise, soft mist, detailed fur, warm backlight, natural colors.','Un cartel tipográfico que dice "IMAGINA", formas de papel tridimensionales en tonos lavanda y coral, composición editorial limpia.'];
-let ideaIndex=0;$('#inspire').onclick=()=>{const list=isSdxl()&&preset().ideas?.length?preset().ideas:isSdxl()?['1girl, solo, long hair, school uniform, cherry blossoms, wind, looking back, sunset, scenery']:ideas;$('#prompt').value=list[ideaIndex++%list.length];refreshForm();};
+// SDXL ideas are tags from the catalog (per checkpoint, or the generic ones); Qwen ideas are sentences.
+const ideaIndex={};$('#inspire').onclick=()=>{const p=preset(),list=isSdxl()&&p.ideas?.length?p.ideas:ideas,i=ideaIndex[p.id]??0;ideaIndex[p.id]=i+1;$('#prompt').value=list[i%list.length];refreshForm();};
 $('#theme').onclick=()=>{document.body.classList.toggle('dark');try{localStorage.setItem('turbo.theme',document.body.classList.contains('dark')?'dark':'light');}catch{}};
 function selectImage(item) {
   state.selected=item; $('#result').src=item.src;$('#result').hidden=false;$('#empty').hidden=true;$('#resultInfo').hidden=false;

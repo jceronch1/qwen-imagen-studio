@@ -35,7 +35,7 @@ export function sdxlPreset(file) {
   return {
     id: 'sdxl:' + file, family: 'sdxl', file, label: known.label || file.replace(/\.(safetensors|gguf)$/i, '') + ' · SDXL',
     source: known.source || null, license: known.license || null, steps: known.steps ?? d.steps, cfg: known.cfg ?? d.cfg,
-    sampler: known.sampler ?? d.sampler, prefix: known.prefix ?? '', negative: known.negative ?? d.negative, ideas: known.ideas || [], refs: false, loras: true
+    sampler: known.sampler ?? d.sampler, prefix: known.prefix ?? '', negative: known.negative ?? d.negative, ideas: known.ideas || d.ideas || [], refs: false, loras: true
   };
 }
 // Preset from an id already validated by core.validate; existence is checked by installedModel().
