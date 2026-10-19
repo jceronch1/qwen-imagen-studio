@@ -2,7 +2,8 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile, mkdir, readdir, rename, unlink } from 'node:fs/promises';
 import { resolve, basename, extname } from 'node:path';
-import { validate, enginePayload, MODEL } from './core.mjs';
+import { validate, enginePayload, outputSize, MODEL } from './core.mjs';
+import { listModels, listLoras, installedModel, availableDownloads, presetFor, SDXL } from './models.mjs';
 import { EngineManager, chooseMode } from './engine-manager.mjs';
 import { logOffset, recentLog, diagnoseFailure } from './engine-diagnostics.mjs';
 
@@ -28,8 +29,8 @@ async function run(job) {
   try {
     let selected = { merged: false, convDirect: false };
     if(manager){
-      job.message='Preparando el motor para '+job.params.compute+'. Cambiar de dispositivo requiere recargar los modelos.';
-      selected=await manager.ensure(job.params.compute,job.params.threads,job.params.fastAttention);
+      job.message='Preparando el motor para '+job.params.compute+'. Cambiar de modelo o de dispositivo requiere recargar los pesos.';
+      selected=await manager.ensure(job.params.compute,job.params.threads,job.params.fastAttention,job.params.model);
       job.computeUsed=selected.mode; job.device=selected.device;
     }
     for (let i = 0; i < job.params.count; i++) {
@@ -58,7 +59,7 @@ async function run(job) {
       if (!bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) throw new Error('La respuesta del motor no es un PNG válido.');
       const { refs, ...params } = job.params;
       const loraRecord = selected.merged ? { loraApplication:'merged', mergedModel:MODEL.merged } : { loraApplication:'runtime', runtimeLora:MODEL.runtimeLora, runtimeLoraSha256:MODEL.runtimeLoraSha256 };
-      const record = { ...params, weightStorage:manager?selected.weights:'external', attention:selected.attention||'external', vaeTiling:payload.vae_tiling_params.enabled, computeUsed:job.computeUsed||'external', device:job.device||'external', count: 1, id, seed: params.seed + i, refsCount: refs.length, src: `/outputs/${name}`, createdAt: new Date().toISOString(), model: MODEL.source, modelVersion:MODEL.version, modelRevision:MODEL.revision, lora:MODEL.lora, ...loraRecord, baseRevision:MODEL.baseRevision, loraScale:MODEL.loraScale, baseModel:MODEL.baseSource, quantization: 'Q4_K', scheduler: 'Turbo v0.2.1 FlowMatchEuler, shift_terminal=null', sigmas:payload.sample_params.custom_sigmas, seconds: Math.round((Date.now() - imageStarted)/100)/10, batchSeconds: Math.round((Date.now() - job.startedAt)/1000) };
+      const record = params.model.startsWith('sdxl:') ? sdxlRecord(params, i, payload, selected, job, imageStarted, id, name, refs) : { ...params, modelLabel:presetFor('qwen').label, weightStorage:manager?selected.weights:'external', attention:selected.attention||'external', vaeTiling:payload.vae_tiling_params.enabled, computeUsed:job.computeUsed||'external', device:job.device||'external', count: 1, id, seed: params.seed + i, refsCount: refs.length, src: `/outputs/${name}`, createdAt: new Date().toISOString(), model: MODEL.source, modelVersion:MODEL.version, modelRevision:MODEL.revision, lora:MODEL.lora, ...loraRecord, baseRevision:MODEL.baseRevision, loraScale:MODEL.loraScale, baseModel:MODEL.baseSource, quantization: 'Q4_K', scheduler: 'Turbo v0.2.1 FlowMatchEuler, shift_terminal=null', sigmas:payload.sample_params.custom_sigmas, seconds: Math.round((Date.now() - imageStarted)/100)/10, batchSeconds: Math.round((Date.now() - job.startedAt)/1000) };
       await writeFile(resolve(outputs, name), bytes);
       if (refs.length) await writeFile(resolve(outputs, `${id}.refs.json`), JSON.stringify(refs));
       await writeFile(resolve(outputs, `${id}.json.tmp`), JSON.stringify(record, null, 2));
@@ -75,6 +76,13 @@ async function run(job) {
     if(released)job.message+=' Se cerró el motor para liberar su memoria; se cargará de nuevo al reintentar.';
     if(job.images.length)job.message+=' Se conservaron las '+job.images.length+' imágenes terminadas.';
   } finally { job.finishedAt = Date.now(); active = null; }
+}
+function sdxlRecord(params, i, payload, selected, job, imageStarted, id, name, refs) {
+  const preset = presetFor(params.model), out = outputSize(params);
+  return { ...params, modelLabel:preset.label, checkpoint:preset.file, modelSource:preset.source, license:preset.license, family:'sdxl', prompt:params.prompt, enginePrompt:payload.prompt,
+    outputWidth:out.width, outputHeight:out.height, scheduler:payload.sample_params.scheduler||'default', weightStorage:manager?selected.weights:'external', attention:selected.attention||'external',
+    vaeTiling:payload.vae_tiling_params.enabled, computeUsed:job.computeUsed||'external', device:job.device||'external', count:1, id, seed:params.seed + i, refsCount:refs.length,
+    src:`/outputs/${name}`, createdAt:new Date().toISOString(), seconds:Math.round((Date.now() - imageStarted)/100)/10, batchSeconds:Math.round((Date.now() - job.startedAt)/1000) };
 }
 async function gallery() {
   const files = (await readdir(outputs)).filter(f => /^[a-f0-9-]{36}\.json$/.test(f));
@@ -99,13 +107,20 @@ const server = createServer(async (req,res) => {
       const compute = manager?.snapshot() || {managed:false};
       // A job submitted while the engine loads waits for it, so loading does not block the button.
       if(manager)ready=compute.canGenerate;
-      return json(res,200,{ app:'qwen-turbo-local', ready, compute, active: active ? publicJob(active) : null, model:`Qwen 2.1 · Viggle Turbo v${MODEL.version} · Q4_K + LoRA r256`, modelVersion:MODEL.version, recommendedSteps:MODEL.recommendedSteps });
+      const current = compute.current ? presetFor(compute.current.model || 'qwen').label : null;
+      return json(res,200,{ app:'image-studio-local', ready, compute, currentModel:current, active: active ? publicJob(active) : null, model:current, modelVersion:MODEL.version, recommendedSteps:MODEL.recommendedSteps });
+    }
+    if (req.method === 'GET' && path === '/api/models') {
+      // Without the managed engine, the external engine decides the model: Qwen settings are assumed.
+      const models = manager ? listModels() : [presetFor('qwen')];
+      return json(res,200,{ models, loras:listLoras(), downloads:availableDownloads(), checkpointDir:SDXL.checkpointDir, loraDir:SDXL.loraDir });
     }
     if (req.method === 'POST' && path === '/api/engine/warmup') {
       if (!manager) return json(res,200,{managed:false});
       const params = validate({ ...(await readBody(req)), prompt:'warmup', refs:[] });
+      installedModel(params.model);
       try { chooseMode(params.compute, await manager.detection); } catch (e) { return json(res,400,{error:e.message}); }
-      if (!active) void manager.warm(params.compute, params.threads, params.fastAttention);
+      if (!active) void manager.warm(params.compute, params.threads, params.fastAttention, params.model);
       return json(res,202,manager.snapshot());
     }
     if (req.method === 'GET' && path === '/api/gallery') return json(res,200,await gallery());
@@ -113,7 +128,13 @@ const server = createServer(async (req,res) => {
       if (active || deleting) return json(res,409,{error:'Espera a que termine la operación en curso.'});
       const params = validate(await readBody(req));
       if (active || deleting) return json(res,409,{error:'Espera a que termine la operación en curso.'});
-      if(!manager&&params.compute!=='auto')return json(res,400,{error:'Este servidor usa un motor externo. Usa "Iniciar Qwen Imagen Studio.cmd" para seleccionar CPU/GPU.'});
+      if(!manager&&params.compute!=='auto')return json(res,400,{error:'Este servidor usa un motor externo. Usa "Iniciar Image Studio.cmd" para seleccionar CPU/GPU.'});
+      if(manager){
+        installedModel(params.model);
+        const loras=new Set(listLoras().map(l=>l.file));
+        const missing=params.loras?.find(l=>!loras.has(l.file));
+        if(missing)return json(res,400,{error:`El LoRA ${missing.file} no está en ${SDXL.loraDir}.`});
+      }
       if(manager){chooseMode(params.compute,await manager.detection);if(active||deleting)return json(res,409,{error:'Espera a que termine la operación en curso.'});}
       const job = { id:randomUUID(), params, status:'queued', startedAt:Date.now(), current:0, total:params.count, images:[], seed:params.seed, message:'Preparando el motor local…', cancelRequested:false };
       active = job; jobs.set(job.id,job);
@@ -165,4 +186,4 @@ const server = createServer(async (req,res) => {
     return json(res,404,{error:'No encontrado.'});
   } catch(error) { return json(res,error.status || (error.code === 'ENOENT' ? 404 : 500),{error:error.message}); }
 });
-server.listen(port,'127.0.0.1',()=>console.log(`Qwen Imagen Studio: http://127.0.0.1:${port}`));
+server.listen(port,'127.0.0.1',()=>console.log(`Image Studio: http://127.0.0.1:${port}`));

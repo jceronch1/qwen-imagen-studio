@@ -1,40 +1,140 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Qwen Imagen Studio</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%237754dc'/%3E%3Cpath d='M23 5L11 23h9l-3 12 14-20h-10z' fill='white'/%3E%3C/svg%3E"><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Image Studio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230e7c6b'/%3E%3Cstop offset='1' stop-color='%2322c3a6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='40' height='40' rx='11' fill='url(%23g)'/%3E%3Cpath d='M20 8c1.2 6.6 5.4 10.8 12 12-6.6 1.2-10.8 5.4-12 12-1.2-6.6-5.4-10.8-12-12 6.6-1.2 10.8-5.4 12-12z' fill='white'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
+</head>
 <body>
-<header><a class="brand" href="/"><span class="logo">ϟ</span><strong>qwen<span> / imagen studio</span></strong></a><div class="header-right"><span class="local">◉ Solo en tu equipo</span><button id="theme" class="icon" aria-label="Cambiar tema">◐</button></div></header>
-<main>
-<aside class="controls">
-<div class="eyebrow">TU ESTUDIO GENERATIVO</div><h1>Una idea.<br><em>Infinitas imágenes.</em></h1><p class="intro">De tu imaginación al lienzo, en local.</p>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="Image Studio">
+    <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0e7c6b"/><stop offset="1" stop-color="#22c3a6"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#logoGrad)"/><path d="M20 8c1.2 6.6 5.4 10.8 12 12-6.6 1.2-10.8 5.4-12 12-1.2-6.6-5.4-10.8-12-12 6.6-1.2 10.8-5.4 12-12z" fill="#fff"/></svg>
+    <span class="brand-text"><strong>Image Studio</strong><small>IA generativa local</small></span>
+  </a>
+  <div class="model-chip" title="Modelo seleccionado"><span id="headerFamily" class="badge">—</span><span id="headerModel">Detectando modelos…</span></div>
+  <div class="topbar-right">
+    <span id="status" class="status"><i></i> Conectando motor</span>
+    <span class="local" title="Los prompts y las imágenes no salen de tu equipo">● Sin nube</span>
+    <button id="theme" class="icon" type="button" aria-label="Cambiar tema claro u oscuro"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg></button>
+  </div>
+</header>
+
+<main class="layout">
+<aside class="panel">
 <form id="form">
-<div class="section-title"><label for="prompt">01 <b>Describe tu imagen</b></label><button type="button" id="inspire" class="text-button">Dame una idea ↗</button></div>
-<textarea id="prompt" maxlength="6000" required placeholder="Un invernadero de cristal entre nubes, plantas tropicales, luz de la mañana…"></textarea>
-<div class="prompt-foot"><span>También puedes escribir instrucciones de edición.</span><span id="chars">0/6000</span></div>
-<div class="section-title"><span>02 <b>Imágenes de referencia</b></span><span id="refCount">0 / 2</span></div>
-<label id="dropzone" class="dropzone" for="files"><span class="upload-icon">↥</span><strong>Añade hasta 2 imágenes o arrástralas aquí</strong><small>PNG, JPG o WebP · hasta 8 MB cada una</small><input id="files" type="file" accept="image/png,image/jpeg,image/webp" multiple></label>
-<div id="refs" class="refs"></div><button type="button" id="addSecond" class="secondary" hidden>＋ Añadir segunda referencia</button><p id="refHint" class="hint" hidden>El orden importa: menciona «imagen 1» o «imagen 2» en tu instrucción. Usa las flechas para reordenar.</p>
-<div class="section-title"><span>03 <b>Formato y tamaño</b></span><span id="megapixels">1.05 MP</span></div>
-<div class="presets" role="group" aria-label="Formatos de imagen">
-<button type="button" class="preset active" data-w="1024" data-h="1024"><i style="aspect-ratio:1"></i>1:1</button><button type="button" class="preset" data-w="1344" data-h="768"><i style="aspect-ratio:1.75"></i>16:9 aprox.</button><button type="button" class="preset" data-w="768" data-h="1344"><i style="aspect-ratio:.57"></i>9:16 aprox.</button><button type="button" class="preset" data-w="1152" data-h="864"><i style="aspect-ratio:1.33"></i>4:3</button><button type="button" class="preset" data-w="512" data-h="512"><i style="aspect-ratio:1"></i>Prueba</button>
-</div>
-<div class="dimensions"><label>Ancho <div class="unit"><input id="width" type="number" min="256" max="2048" step="32" value="1024" required><span>px</span></div></label><button type="button" id="swap" class="icon" aria-label="Intercambiar ancho y alto">⇄</button><label>Alto <div class="unit"><input id="height" type="number" min="256" max="2048" step="32" value="1024" required><span>px</span></div></label></div>
-<p class="hint">De 256 a 2048 px, en múltiplos de 32. 512 px para probar; 1024 px para crear.</p>
-<div class="section-title"><span>04 <b>Control creativo</b></span><button type="button" id="recommended" class="text-button">Restaurar Turbo</button></div>
-<div class="two-col"><label>Pasos <input id="steps" aria-label="Pasos" type="number" min="1" max="40" value="6" required></label><label>Imágenes por lote<select id="count"><option value="1">1 imagen</option><option value="2">2 imágenes</option><option value="3">3 imágenes</option><option value="4">4 imágenes</option><option value="5">5 imágenes</option><option value="6">6 imágenes</option><option value="7">7 imágenes</option><option value="8">8 imágenes</option></select></label></div>
-<p id="stepsHint" class="hint accent">6 pasos · configuración recomendada para Viggle v0.2.1.</p>
-<label class="seed-label" for="seed">Semilla <span>−1 = aleatoria</span></label><div class="seed-row"><input id="seed" type="number" min="-1" max="2147483647" step="1" value="-1" required><button id="random" type="button" class="icon" aria-label="Elegir semilla aleatoria">⚄</button></div>
-<label class="toggle-row"><span>Fondo transparente <small>Solicitar salida RGBA mediante el prompt</small></span><input id="transparent" type="checkbox" role="switch"></label>
-<div class="section-title"><span>05 <b>Equipo de generación</b></span></div>
-<div class="two-col"><label>Procesamiento<select id="compute"><option value="auto">Automático</option><option value="cpu">CPU · sin GPU</option><option value="gpu">GPU</option><option value="hybrid">CPU + GPU</option></select></label><label>Hilos de CPU<input id="threads" type="number" min="0" max="128" step="1" value="0" required></label></div>
-<p id="hardwareInfo" class="hint" aria-live="polite">Detectando los dispositivos compatibles…</p><p id="computeHint" class="hint">Automático usa una GPU compatible si está disponible; en otro caso utiliza CPU.</p>
-<label class="toggle-row"><span>Atención rápida <small>SageAttention en GPU NVIDIA: ~12 % más rápido, detalles finos ligeramente distintos</small></span><input id="fastAttention" type="checkbox" role="switch" checked></label>
-<details><summary>Acerca del motor y los ajustes</summary><p id="engineInfo">Viggle Turbo v0.2.1 · modelo base Q4_K + LoRA r256. Euler con el planificador Turbo, CFG 1 y sin prompt negativo, como requiere este modelo.</p><p>Más pasos no garantizan mejor calidad. La edición compleja y la conservación de identidad tienen limitaciones en esta versión. La transparencia depende de la respuesta del modelo.</p><p>Los lotes se procesan uno a uno para ahorrar memoria. Cada imagen usa semilla inicial + su posición.</p></details>
-<div class="generate-wrap"><button id="generate" class="primary" type="submit"><span>ϟ</span> Crear imagen <span class="key">Ctrl ↵</span></button><span class="privacy">Sin créditos. Sin nube. Tu imaginación, en tu equipo.</span></div>
-</form></aside>
-<section class="workspace">
-<div class="workspace-bar"><div><span class="eyebrow">LIENZO</span><span id="canvasSize">1024 × 1024</span></div><span id="status" class="status"><i></i> Conectando motor</span></div>
-<div class="canvas" id="canvas"><div id="empty" class="empty"><div class="orb"><span>ϟ</span></div><span class="eyebrow">DEJA ESPACIO A LO IMPOSIBLE</span><h2>Todo empieza<br>con una idea.</h2><p>Escribe lo que imaginas. Añade referencias.<br>Hazlo tuyo, hasta el último píxel.</p><div class="empty-tags"><span>Texto → imagen</span><span>Imagen → imagen</span></div></div><img id="result" alt="Imagen generada" hidden><div id="working" class="working" hidden><div class="spinner"></div><h2 id="workTitle">Creando tu imagen</h2><p id="workMessage"></p><strong id="elapsed">0 s</strong><p class="hint">La primera generación tarda más al cargar los modelos.</p><button id="cancel" type="button" class="secondary">Cancelar generación</button></div></div>
-<div id="resultInfo" class="result-info" hidden><div><strong id="resultTitle">Tu creación</strong><span id="resultMeta"></span></div><div class="result-actions"><button id="reuse" class="secondary">Reutilizar ajustes</button><button id="useRef" class="secondary">Usar de referencia</button><a id="download" class="primary small" download>Descargar PNG ↗</a><a id="metadata" class="icon" title="Descargar parámetros JSON" download>↓ JSON</a><button id="delete" class="icon" aria-label="Eliminar imagen">×</button></div></div>
-<div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
-<div class="library-heading"><div><span class="eyebrow">BIBLIOTECA LOCAL</span><h2>Tus exploraciones <span id="galleryCount">0</span></h2></div><button id="deleteAll" type="button" class="secondary danger" disabled>Eliminar todas</button></div><div class="selection-bar"><label><input id="selectAll" type="checkbox"> Seleccionar todas</label><span id="selectionCount">0 seleccionadas</span><button id="deleteSelected" class="secondary danger" disabled>Eliminar seleccionadas</button></div><div id="gallery" class="gallery"></div><p id="galleryEmpty" class="gallery-empty">Las imágenes que crees aparecerán aquí, incluso después de cerrar la app.</p>
-<footer>QWEN IMAGE 2.1 <span>× VIGGLE TURBO v0.2.1</span><span>Motor independiente · CPU / GPU · 4 bits</span></footer>
-</section></main></body></html>
+
+  <section class="card card-model">
+    <div class="card-head"><label for="model"><span class="step">01</span>Modelo</label><span id="modelFamily" class="badge">Qwen-Image</span></div>
+    <select id="model" class="model-select"><option value="qwen">Qwen-Image 2.1 · Viggle Turbo</option></select>
+    <p id="modelHint" class="hint">Detectando los modelos instalados…</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><label for="prompt"><span class="step">02</span>Prompt</label><button type="button" id="inspire" class="text-button">Dame una idea ↗</button></div>
+    <textarea id="prompt" maxlength="6000" required placeholder="Describe la imagen que quieres crear…"></textarea>
+    <div class="prompt-foot"><span id="promptHint">También puedes escribir instrucciones de edición.</span><span id="chars">0/6000</span></div>
+    <div class="sdxl-only">
+      <label class="field-label" for="negativePrompt">Prompt negativo <span>lo que no quieres ver</span></label>
+      <textarea id="negativePrompt" class="negative" maxlength="2000"></textarea>
+      <label class="toggle-row"><span>Etiquetas de calidad <small id="prefixHint">Antepone las etiquetas recomendadas por el modelo</small></span><input id="qualityTags" type="checkbox" role="switch" checked></label>
+    </div>
+  </section>
+
+  <section class="card qwen-only">
+    <div class="card-head"><span><span class="step">03</span>Referencias</span><span id="refCount" class="count">0 / 2</span></div>
+    <label id="dropzone" class="dropzone" for="files"><span class="upload-icon">↥</span><strong>Añade hasta 2 imágenes o arrástralas aquí</strong><small>PNG, JPG o WebP · hasta 8 MB cada una</small><input id="files" type="file" accept="image/png,image/jpeg,image/webp" multiple></label>
+    <div id="refs" class="refs"></div>
+    <button type="button" id="addSecond" class="secondary block" hidden>＋ Añadir segunda referencia</button>
+    <p id="refHint" class="hint" hidden>El orden importa: menciona «imagen 1» o «imagen 2» en tu instrucción. Usa las flechas para reordenar.</p>
+  </section>
+
+  <section class="card sdxl-only">
+    <div class="card-head"><span><span class="step">03</span>LoRAs <small class="muted">personajes y estilos</small></span><span id="loraCount" class="count">0 activos</span></div>
+    <div id="loras" class="loras"></div>
+    <p id="loraHint" class="hint">Copia LoRAs SDXL (.safetensors) en <code>models\sdxl\loras</code> y recarga la página. Peso típico: 0.6–1.0.</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><span><span class="step">04</span>Formato</span><span id="megapixels" class="count">1.05 MP</span></div>
+    <div class="presets" role="group" aria-label="Formatos de imagen">
+      <button type="button" class="preset active" data-w="1024" data-h="1024"><i style="aspect-ratio:1"></i>1:1</button>
+      <button type="button" class="preset" data-w="1344" data-h="768"><i style="aspect-ratio:1.75"></i>16:9</button>
+      <button type="button" class="preset" data-w="768" data-h="1344"><i style="aspect-ratio:.57"></i>9:16</button>
+      <button type="button" class="preset" data-w="1152" data-h="864"><i style="aspect-ratio:1.33"></i>4:3</button>
+      <button type="button" class="preset" data-w="512" data-h="512"><i style="aspect-ratio:1"></i>Prueba</button>
+    </div>
+    <div class="dimensions">
+      <label>Ancho <div class="unit"><input id="width" type="number" min="256" max="2048" step="32" value="1024" required><span>px</span></div></label>
+      <button type="button" id="swap" class="icon" aria-label="Intercambiar ancho y alto">⇄</button>
+      <label>Alto <div class="unit"><input id="height" type="number" min="256" max="2048" step="32" value="1024" required><span>px</span></div></label>
+    </div>
+    <p class="hint">De 256 a 2048 px, en múltiplos de 32. 512 px para probar; ~1 MP (1024 × 1024) para crear.</p>
+    <label class="toggle-row sdxl-only"><span>Modo wallpaper <small>Segunda pasada ×1.5 (hires fix): 1344 × 768 → 2016 × 1152. Tarda ~2.5 veces más</small></span><input id="hires" type="checkbox" role="switch"></label>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><span><span class="step">05</span>Ajustes</span><button type="button" id="recommended" class="text-button">Restaurar recomendados</button></div>
+    <div class="two-col">
+      <label>Pasos <input id="steps" aria-label="Pasos" type="number" min="1" max="60" value="6" required></label>
+      <label>Imágenes por lote<select id="count"><option value="1">1 imagen</option><option value="2">2 imágenes</option><option value="3">3 imágenes</option><option value="4">4 imágenes</option><option value="5">5 imágenes</option><option value="6">6 imágenes</option><option value="7">7 imágenes</option><option value="8">8 imágenes</option></select></label>
+    </div>
+    <div class="two-col sdxl-only">
+      <label>CFG <input id="cfg" type="number" min="1" max="15" step="0.5" value="5" required></label>
+      <label>Sampler<select id="sampler"><option value="euler_a">Euler a</option><option value="dpm++2m_karras">DPM++ 2M Karras</option><option value="euler">Euler</option><option value="dpm++2s_a">DPM++ 2S a</option></select></label>
+    </div>
+    <p id="stepsHint" class="hint accent">6 pasos · configuración recomendada para Viggle v0.2.1.</p>
+    <label class="field-label" for="seed">Semilla <span>−1 = aleatoria</span></label>
+    <div class="seed-row"><input id="seed" type="number" min="-1" max="2147483647" step="1" value="-1" required><button id="random" type="button" class="icon" aria-label="Elegir semilla aleatoria">⚄</button></div>
+    <label class="toggle-row qwen-only"><span>Fondo transparente <small>Solicita salida RGBA mediante el prompt</small></span><input id="transparent" type="checkbox" role="switch"></label>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><span><span class="step">06</span>Equipo</span></div>
+    <div class="two-col">
+      <label>Procesamiento<select id="compute"><option value="auto">Automático</option><option value="cpu">CPU · sin GPU</option><option value="gpu">GPU</option><option value="hybrid">CPU + GPU</option></select></label>
+      <label>Hilos de CPU<input id="threads" type="number" min="0" max="128" step="1" value="0" required></label>
+    </div>
+    <p id="hardwareInfo" class="hint" aria-live="polite">Detectando los dispositivos compatibles…</p>
+    <p id="computeHint" class="hint">Automático usa una GPU compatible si está disponible; en otro caso utiliza CPU.</p>
+    <label class="toggle-row"><span>Atención rápida <small>SageAttention (RTX 30 o posterior): ~12 % más rápido, detalles finos ligeramente distintos</small></span><input id="fastAttention" type="checkbox" role="switch" checked></label>
+    <details><summary>Acerca del motor y los ajustes</summary><p id="engineInfo">Motor stable-diffusion.cpp local.</p><p>Más pasos no garantizan mejor calidad. Los lotes se procesan uno a uno para ahorrar memoria; cada imagen usa la semilla inicial + su posición.</p></details>
+  </section>
+
+  <div class="generate-bar">
+    <button id="generate" class="primary" type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c.8 4.6 3.4 7.2 8 8-4.6.8-7.2 3.4-8 8-.8-4.6-3.4-7.2-8-8 4.6-.8 7.2-3.4 8-8z" fill="currentColor"/></svg> Crear imagen <span class="key">Ctrl ↵</span></button>
+  </div>
+</form>
+</aside>
+
+<section class="stage">
+  <div class="stage-bar"><div><span class="eyebrow">Lienzo</span><span id="canvasSize">1024 × 1024</span></div></div>
+  <div class="canvas" id="canvas">
+    <div id="empty" class="empty">
+      <div class="empty-frame" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2c.8 4.6 3.4 7.2 8 8-4.6.8-7.2 3.4-8 8-.8-4.6-3.4-7.2-8-8 4.6-.8 7.2-3.4 8-8z" fill="currentColor"/></svg></div>
+      <h2>Tu próxima imagen empieza aquí</h2>
+      <p>Elige un modelo, describe la escena y pulsa <b>Crear imagen</b>.<br>Todo se calcula en tu equipo.</p>
+      <div class="empty-tags"><span>Texto → imagen</span><span>LoRAs</span><span>Wallpapers</span><span>Edición con referencias</span></div>
+    </div>
+    <img id="result" alt="Imagen generada" hidden>
+    <div id="working" class="working" hidden><div class="spinner"></div><h2 id="workTitle">Creando tu imagen</h2><p id="workMessage"></p><strong id="elapsed">0 s</strong><p class="hint">La primera generación tarda más al cargar los modelos.</p><button id="cancel" type="button" class="secondary">Cancelar generación</button></div>
+  </div>
+  <div id="resultInfo" class="result-info" hidden>
+    <div><strong id="resultTitle">Tu creación</strong><span id="resultMeta"></span></div>
+    <div class="result-actions"><button id="reuse" class="secondary" type="button">Reutilizar ajustes</button><button id="useRef" class="secondary qwen-only" type="button">Usar de referencia</button><a id="download" class="primary small" download>Descargar PNG</a><a id="metadata" class="icon" title="Descargar parámetros JSON" download>JSON</a><button id="delete" class="icon" type="button" aria-label="Eliminar imagen">×</button></div>
+  </div>
+  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+  <div class="library">
+    <div class="library-heading"><div><span class="eyebrow">Biblioteca local</span><h2>Tus imágenes <span id="galleryCount" class="count-pill">0</span></h2></div><button id="deleteAll" type="button" class="secondary danger" disabled>Eliminar todas</button></div>
+    <div class="selection-bar"><label><input id="selectAll" type="checkbox"> Seleccionar todas</label><span id="selectionCount">0 seleccionadas</span><button id="deleteSelected" type="button" class="secondary danger" disabled>Eliminar seleccionadas</button></div>
+    <div id="gallery" class="gallery"></div>
+    <p id="galleryEmpty" class="gallery-empty">Las imágenes que crees aparecerán aquí, incluso después de cerrar la app.</p>
+  </div>
+  <footer><span>Image Studio</span><span>Motor stable-diffusion.cpp · Qwen-Image · SDXL · CPU / GPU</span></footer>
+</section>
+</main>
+</body>
+</html>

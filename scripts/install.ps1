@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([ValidateSet('auto','cpu','cuda','vulkan')][string]$Backend='auto', [switch]$NoMerge)
+param([ValidateSet('auto','cpu','cuda','vulkan')][string]$Backend='auto', [switch]$NoMerge, [ValidateSet('qwen','anime','all')][string]$Models, [string[]]$Checkpoints=@('NoobAI-XL-v1.1.safetensors'))
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
@@ -45,6 +45,13 @@ function Download([string]$Url,[string]$Target,[string]$Sha) {
     if ((Hash $Part) -ne $Sha) { Remove-Item -LiteralPath $Part; throw "El archivo descargado $Target no coincide con el oficial. Ejecuta el instalador nuevamente." }
     Move-Item -LiteralPath $Part -Destination $Target -Force
 }
+# Hugging Face announces the SHA256 of each LFS file in the X-Linked-Etag header of its redirect.
+function Get-HfSha256([string]$Url) {
+    $Headers = & curl.exe --silent --head --fail $Url
+    if ($LASTEXITCODE -ne 0) { throw "No se pudo consultar $Url. Revisa la conexion o si el archivo cambio de nombre en Hugging Face." }
+    foreach ($Line in $Headers) { if ($Line -match '^x-linked-etag:\s*"?([0-9a-f]{64})"?') { return $Matches[1].ToLowerInvariant() } }
+    throw "Hugging Face no informo el SHA256 de $Url."
+}
 function Runtime([string]$Folder,[string]$Kind,[string]$Sha) {
     $Path = Join-Path $ProjectRoot $Folder
     if (Test-Path -LiteralPath (Join-Path $Path 'sd-server.exe')) { return }
@@ -55,9 +62,20 @@ function Runtime([string]$Folder,[string]$Kind,[string]$Sha) {
     Remove-Item -LiteralPath $Zip
 }
 
-Write-Host 'Instalador de Qwen Imagen Studio' -ForegroundColor Green
+Write-Host 'Instalador de Image Studio' -ForegroundColor Green
+# Without -Models the installer asks; the .cmd shortcuts pass it for a one-click install.
+if (!$Models) {
+    Write-Host ''
+    Write-Host 'Que modelos quieres instalar?'
+    Write-Host '  1) Anime SDXL: NoobAI-XL 1.1  (descarga de 7 GB, GPU de 4-6 GB o CPU)'
+    Write-Host '  2) Qwen-Image 2.1 + Viggle Turbo  (descarga de 17 GB, GPU de 8 GB o mas)'
+    Write-Host '  3) Ambos'
+    do { $Choice = Read-Host 'Escribe 1, 2 o 3' } while ($Choice -notin '1','2','3')
+    $Models = @{ '1' = 'anime'; '2' = 'qwen'; '3' = 'all' }[$Choice]
+}
 $FreeGB = [math]::Round((Get-Item -LiteralPath $ProjectRoot).PSDrive.Free / 1GB, 1)
-if ($FreeGB -lt 25) { Write-Warning "Hay $FreeGB GB libres. La instalacion necesita unos 25 GB durante el proceso y ocupa unos 13 GB al terminar." }
+if ($Models -eq 'anime' -and $FreeGB -lt 9) { Write-Warning "Hay $FreeGB GB libres. El modelo anime ocupa unos 7 GB." }
+elseif ($Models -ne 'anime' -and $FreeGB -lt 25) { Write-Warning "Hay $FreeGB GB libres. La instalacion necesita unos 25 GB durante el proceso y ocupa unos 13 GB al terminar." }
 
 Step 'Node.js'
 $Node = Get-AppNode $ProjectRoot
@@ -106,42 +124,63 @@ if ($Backend -eq 'cuda' -or ($Backend -eq 'auto' -and $HasNvidia)) {
     }
 }
 
-Step 'Modelos: codificador de texto, lector de referencias y VAE'
-Download 'https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/resolve/main/Qwen3VL-8B-Instruct-Q4_K_M.gguf' 'models\Qwen3VL-8B-Instruct-Q4_K_M.gguf' '67d1659bfe71b89d50b45a4ad1a9e5b997e5bb16ce5da66a6a6167abd569e9e2'
-Download 'https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/resolve/main/mmproj-Qwen3VL-8B-Instruct-F16.gguf' 'models\mmproj-Qwen3VL-8B-Instruct-F16.gguf' 'ca524100ebf825c9a870db1c580d03879e0da0ab2541697e2458e64891cf9d38'
-Download 'https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/vae/qwen_image_2.1_vae_bf16.safetensors' 'models\qwen_image_2.1_vae_bf16.safetensors' 'bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9'
+$Merged = $false
+if ($Models -ne 'anime') {
+    Step 'Modelos: codificador de texto, lector de referencias y VAE'
+    Download 'https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/resolve/main/Qwen3VL-8B-Instruct-Q4_K_M.gguf' 'models\Qwen3VL-8B-Instruct-Q4_K_M.gguf' '67d1659bfe71b89d50b45a4ad1a9e5b997e5bb16ce5da66a6a6167abd569e9e2'
+    Download 'https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct-GGUF/resolve/main/mmproj-Qwen3VL-8B-Instruct-F16.gguf' 'models\mmproj-Qwen3VL-8B-Instruct-F16.gguf' 'ca524100ebf825c9a870db1c580d03879e0da0ab2541697e2458e64891cf9d38'
+    Download 'https://huggingface.co/Comfy-Org/Qwen-Image-2.1/resolve/main/vae/qwen_image_2.1_vae_bf16.safetensors' 'models\qwen_image_2.1_vae_bf16.safetensors' 'bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9'
 
-Step 'Modelo de imagen optimizado (Qwen-Image 2.1 + LoRA Viggle Turbo fusionado)'
-# The LoRA is fused once over the official Q8_0 base and stored as Q4_K. Both sources are temporary.
-& $Node (Join-Path $PSScriptRoot 'merge-lora.mjs') --verify
-$Merged = $LASTEXITCODE -eq 0
-$LoraUrl = 'https://huggingface.co/' + $Config.source + '/resolve/' + $Config.revision + '/' + $Config.lora
-$DownloadedLora = Join-Path '.downloads' $Config.lora
-if (!$Merged -and !$NoMerge) {
-    Write-Host 'Descarga unica de 9 GB y varios minutos de calculo en CPU (unos 8 min con 16 hilos).'
-    $Precise = Join-Path '.downloads' $Config.preciseBase
-    try {
-        Download $LoraUrl $DownloadedLora $Config.loraSha256
-        Download ('https://huggingface.co/' + $Config.baseSource + '/resolve/' + $Config.baseRevision + '/' + $Config.preciseBase) $Precise $Config.preciseBaseSha256
-        & $Node (Join-Path $PSScriptRoot 'merge-lora.mjs') $Precise
-        if ($LASTEXITCODE -ne 0) { throw 'La fusion del LoRA no termino.' }
-        $Merged = $true
-        Remove-Item -LiteralPath $Precise, $DownloadedLora
-    } catch {
-        Write-Warning ('No se creo el modelo optimizado: ' + $_.Exception.Message + ' Se instalara el modo compatible (LoRA aplicado durante la generacion, mas lento).')
+    Step 'Modelo de imagen optimizado (Qwen-Image 2.1 + LoRA Viggle Turbo fusionado)'
+    # The LoRA is fused once over the official Q8_0 base and stored as Q4_K. Both sources are temporary.
+    & $Node (Join-Path $PSScriptRoot 'merge-lora.mjs') --verify
+    $Merged = $LASTEXITCODE -eq 0
+    $LoraUrl = 'https://huggingface.co/' + $Config.source + '/resolve/' + $Config.revision + '/' + $Config.lora
+    $DownloadedLora = Join-Path '.downloads' $Config.lora
+    if (!$Merged -and !$NoMerge) {
+        Write-Host 'Descarga unica de 9 GB y varios minutos de calculo en CPU (unos 8 min con 16 hilos).'
+        $Precise = Join-Path '.downloads' $Config.preciseBase
+        try {
+            Download $LoraUrl $DownloadedLora $Config.loraSha256
+            Download ('https://huggingface.co/' + $Config.baseSource + '/resolve/' + $Config.baseRevision + '/' + $Config.preciseBase) $Precise $Config.preciseBaseSha256
+            & $Node (Join-Path $PSScriptRoot 'merge-lora.mjs') $Precise
+            if ($LASTEXITCODE -ne 0) { throw 'La fusion del LoRA no termino.' }
+            $Merged = $true
+            Remove-Item -LiteralPath $Precise, $DownloadedLora
+        } catch {
+            Write-Warning ('No se creo el modelo optimizado: ' + $_.Exception.Message + ' Se instalara el modo compatible (LoRA aplicado durante la generacion, mas lento).')
+        }
+    }
+    if (!$Merged) {
+        # Compatible mode: base Q4_K + LoRA converted to the sd.cpp layout and applied at runtime.
+        New-Item -ItemType Directory -Force -Path 'models\loras' | Out-Null
+        Download ('https://huggingface.co/' + $Config.baseSource + '/resolve/' + $Config.baseRevision + '/qwen_image_2.1-Q4_K.gguf') ('models\' + $Config.base) $Config.baseSha256
+        $Lora = Join-Path 'models\loras' $Config.lora
+        if ((Test-Path -LiteralPath $DownloadedLora) -and !(Test-Path -LiteralPath $Lora)) { Move-Item -LiteralPath $DownloadedLora -Destination $Lora }
+        Download $LoraUrl $Lora $Config.loraSha256
+        & $Node (Join-Path $PSScriptRoot 'prepare-lora.mjs')
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar el LoRA para el motor local.' }
     }
 }
-if (!$Merged) {
-    # Compatible mode: base Q4_K + LoRA converted to the sd.cpp layout and applied at runtime.
-    New-Item -ItemType Directory -Force -Path 'models\loras' | Out-Null
-    Download ('https://huggingface.co/' + $Config.baseSource + '/resolve/' + $Config.baseRevision + '/qwen_image_2.1-Q4_K.gguf') ('models\' + $Config.base) $Config.baseSha256
-    $Lora = Join-Path 'models\loras' $Config.lora
-    if ((Test-Path -LiteralPath $DownloadedLora) -and !(Test-Path -LiteralPath $Lora)) { Move-Item -LiteralPath $DownloadedLora -Destination $Lora }
-    Download $LoraUrl $Lora $Config.loraSha256
-    & $Node (Join-Path $PSScriptRoot 'prepare-lora.mjs')
-    if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar el LoRA para el motor local.' }
+
+if ($Models -ne 'qwen') {
+    # Checkpoints registered in sdxl-models.json with a download url (docs/MODELOS.md).
+    $Sdxl = Get-Content -LiteralPath 'sdxl-models.json' -Raw -Encoding UTF8 | ConvertFrom-Json
+    New-Item -ItemType Directory -Force -Path $Sdxl.checkpointDir, $Sdxl.loraDir | Out-Null
+    foreach ($Name in $Checkpoints) {
+        $Entry = $Sdxl.known.$Name
+        if (!$Entry -or !$Entry.url) { throw "$Name no esta registrado con una url en sdxl-models.json." }
+        Step ('Modelo SDXL: ' + $Entry.label + ' (' + $Entry.sizeGB + ' GB, funciona con GPUs de 4-6 GB)')
+        # A pinned sha256 in the catalog wins; otherwise Hugging Face announces it.
+        $Sha = if ($Entry.sha256) { $Entry.sha256.ToLowerInvariant() } elseif ($Entry.url -like 'https://huggingface.co/*') { Get-HfSha256 $Entry.url } else { throw "Agrega el sha256 de $Name en sdxl-models.json: solo Hugging Face publica el hash automaticamente." }
+        Download $Entry.url (Join-Path $Sdxl.checkpointDir $Name) $Sha
+        if ($Entry.license) { Write-Host ('Licencia del modelo: ' + $Entry.license + $(if ($Entry.source) { ' (https://huggingface.co/' + $Entry.source + ')' } else { '' })) }
+    }
+    Write-Host ('Tus propios checkpoints SDXL van en ' + $Sdxl.checkpointDir + ' y los LoRAs SDXL en ' + $Sdxl.loraDir + '.')
 }
 
 Write-Host ''
-Write-Host ('Instalacion completa' + $(if ($Merged) { ' con el modelo optimizado.' } else { ' en modo compatible. Ejecuta de nuevo el instalador para crear el modelo optimizado.' })) -ForegroundColor Green
-Write-Host 'Ejecuta "Iniciar Qwen Imagen Studio.cmd" para abrir el estudio.' -ForegroundColor Green
+if ($Models -eq 'anime') { Write-Host ('Instalacion completa: ' + ($Checkpoints -join ', ') + '.') -ForegroundColor Green }
+elseif ($Models -eq 'all') { Write-Host ('Instalacion completa con NoobAI-XL y Qwen-Image' + $(if ($Merged) { ' optimizado.' } else { ' en modo compatible.' })) -ForegroundColor Green }
+else { Write-Host ('Instalacion completa' + $(if ($Merged) { ' con el modelo optimizado.' } else { ' en modo compatible. Ejecuta de nuevo el instalador para crear el modelo optimizado.' })) -ForegroundColor Green }
+Write-Host 'Ejecuta "Iniciar Image Studio.cmd" para abrir el estudio.' -ForegroundColor Green

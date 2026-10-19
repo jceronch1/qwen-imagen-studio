@@ -6,13 +6,14 @@
 !/README.md
 !/LICENSE
 !/model-config.json
+!/sdxl-models.json
 !/*.cmd
 !/app/
 !/scripts/
 !/docs/
 /docs/*
 !/docs/capturas/
-!/docs/TECNICO.md
+!/docs/*.md
 !/models/
 /models/*
 !/models/LICENSE-Viggle.txt

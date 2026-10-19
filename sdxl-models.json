@@ -1,0 +1,30 @@
+{
+  "checkpointDir": "models/sdxl/checkpoints",
+  "loraDir": "models/sdxl/loras",
+  "defaults": {
+    "steps": 28,
+    "cfg": 5.5,
+    "sampler": "euler_a",
+    "negative": "worst quality, low quality, lowres, blurry, jpeg artifacts, bad anatomy, bad hands, extra fingers, signature, watermark, username, logo, text"
+  },
+  "known": {
+    "NoobAI-XL-v1.1.safetensors": {
+      "label": "NoobAI-XL 1.1 · anime",
+      "source": "Laxhar/noobai-XL-1.1",
+      "url": "https://huggingface.co/Laxhar/noobai-XL-1.1/resolve/main/NoobAI-XL-v1.1.safetensors",
+      "license": "fair-ai-public-license-1.0-sd",
+      "sizeGB": 6.9,
+      "steps": 28,
+      "cfg": 5,
+      "sampler": "euler_a",
+      "prefix": "masterpiece, best quality, newest, absurdres, highres, safe, ",
+      "negative": "nsfw, worst quality, old, early, low quality, lowres, signature, username, logo, bad hands, mutated hands, extra digits, fewer digits, jpeg artifacts, blurry, watermark",
+      "ideas": [
+        "1girl, solo, silver hair, long hair, red eyes, witch hat, black cloak, holding staff, night sky, starry sky, aurora, wind, from below, cinematic lighting, scenery, wide shot",
+        "1boy, solo, spiky hair, black hair, school uniform, standing on rooftop, city skyline, sunset, orange sky, clouds, lens flare, looking at viewer, wallpaper",
+        "no humans, scenery, japanese temple, cherry blossoms, falling petals, stone lantern, river, morning mist, soft light, detailed background, wide shot",
+        "2girls, multiple girls, magical girl, pink hair, blue hair, back-to-back, glowing magic circle, sparkles, dynamic pose, night, city lights, depth of field"
+      ]
+    }
+  }
+}

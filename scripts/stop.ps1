@@ -17,4 +17,4 @@ if(Test-Path -LiteralPath $EnginePidPath){
 }
 $EngineRecord=Join-Path $ProjectRoot 'logs\engine-process.json'
 if(Test-Path -LiteralPath $EngineRecord){Remove-Item -LiteralPath $EngineRecord}
-Write-Host 'Qwen Imagen Studio detenido. Tus imagenes siguen guardadas en outputs.' -ForegroundColor Green
+Write-Host 'Image Studio detenido. Tus imagenes siguen guardadas en outputs.' -ForegroundColor Green
