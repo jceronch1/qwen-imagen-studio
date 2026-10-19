@@ -60,7 +60,7 @@ No necesitas Python, CUDA ni ninguna otra herramienta. Basta con el controlador 
 
 1. **Descarga la app.** **Code → Download ZIP** y descomprímela en una carpeta con espacio, por ejemplo `D:\Programas\image-studio`. Evita carpetas de OneDrive: los modelos pesan varios GB. También puedes clonarla:
    ```powershell
-   git clone https://github.com/brandonalvarez1220/qwen-imagen-studio.git
+   git clone https://github.com/BrandonAlvarez1220/image-studio.git
    ```
 2. **Ejecuta `Instalar Image Studio.cmd`** y elige en el menú:
    ```
